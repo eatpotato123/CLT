@@ -64,4 +64,4 @@ tokamak MHD instablity simulations.
 4. Thank you for your cooperation!
 
 ## License
-©2015-2025 Zhejiang University. All rights reserved.
+©2015-2035 Zhejiang University. All rights reserved.
