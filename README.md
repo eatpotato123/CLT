@@ -3,10 +3,10 @@
 CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD in English), is a full MHD program developed for the tokamak MHD instablity simulations.
 
 ## Table of Contents
-* [Development history](#Development history)
-* [Main parameters and coordinates](#Main parameters and coordinates)
-* [Terms of use](#Terms-of-use)
-* [License](#License)
+* [Development history](#development-history)
+* [Main parameters and coordinates](#main-parameters-and-coordinates)
+* [Terms of use](#terms-of-use)
+* [License](#license)
 
 
 ## Development history:
@@ -25,14 +25,14 @@ CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD
     * **Can be used for including SOL region from EFIT-gfile equilibriums,**
     * **Subroutines for RMP-EAST coils is added.**
     * **Experiment equilibriums can be used (eq_pgfile_*.dat are read, transform by Matlab from p&g files).**
-
-! Ref: Physics of Plasmas 22, 122504 (2015); doi: 10.1063/1.4936977
+4. Ref: Physics of Plasmas 22, 122504 (2015); doi: 10.1063/1.4936977
 
 ## Main parameters and coordinates
+
 1. mmode=2, nmode=1, qmode=mmode/nmode=2: set the q value of the mode you want to calculate.
 2. hall=true or flase: open the Hall term or not.
 3. mxt=256,myt=64,mzt=256: the grids numbers in each direction.
-4. cfl=1.2: decite the CFL condition number for the time step.
+4. cfl=1.2: decide the CFL condition number for the time step.
 5. x(1-8):total of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz.
 6. x1(1-8):pertubation of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz.
 7. xint(1-8):equilibrium of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz.
