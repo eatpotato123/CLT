@@ -25,8 +25,7 @@ CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD
     * **Can be used for including SOL region from EFIT-gfile equilibriums,**
     * **Subroutines for RMP-EAST coils is added.**
     * **Experiment equilibriums can be used (eq_pgfile_*.dat are read, transform by Matlab from p&g files).**
-
-! Ref: Physics of Plasmas 22, 122504 (2015); doi: 10.1063/1.4936977
+4. Ref: Physics of Plasmas 22, 122504 (2015); doi: 10.1063/1.4936977
 
 ## Main parameters and coordinates
 
