@@ -17,7 +17,6 @@ tokamak MHD instablity simulations.
 ![Image text](https://github.com/changhw/CLT/blob/master/img-folder/shot%23052340.03150ke.png)
 
 ## Development history:
-
 1. The 1st version is developed by Prof. Ma, Zhiwei & Dr. Wang, Sheng @Zhejiang University. 
     * **This version code is written in 2th order finite difference method in space,**
     * **while in the time-advance, 4th order Runge-Kutta scheme is chosen,**
@@ -35,7 +34,6 @@ tokamak MHD instablity simulations.
 4. Ref: Physics of Plasmas 22, 122504 (2015); doi: 10.1063/1.4936977
 
 ## Main parameters and coordinates
-
 1. mmode=2, nmode=1, qmode=mmode/nmode=2: set the q value of the mode you want to calculate.
 2. hall=true or flase: open the Hall term or not.
 3. mxt=256,myt=64,mzt=256: the grids numbers in each direction.
