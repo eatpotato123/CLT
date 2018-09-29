@@ -1,0 +1,16 @@
+#!/bin/sh
+
+Project=tokRZ_mpi
+#$ -S /bin/sh
+#$ -N tokRZ_mpi
+#$ -j y
+#$ -o ./
+#$ -e ./
+#$ -cwd
+#$ -q short.q
+#$ -pe mpi 64-64
+source /backup/home/wzhang/.bashrc
+hash -r
+export path=$TMPDIR:$path
+
+/usr/local/mpi.intel/openmpi1.6.4/bin/mpirun --mca orte_rsh_agent rsh --mca btl openib,self -np $NSLOTS -hostfile $TMPDIR/machines ./a.out
