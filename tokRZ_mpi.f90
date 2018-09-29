@@ -1,4 +1,5 @@
 !该程序是由swang最新版程序修改而来，改动方面：1.差分四阶空间精度，2边界2层待处理点(修改后），3加入hall effect （测试p=03时hall effect 旋转）
+! test
     !mmode=2
     !hall=true
     !fdiout=5.e-2
