@@ -59,6 +59,7 @@ tokamak MHD instablity simulations.
 
 ## Term of use
 1. CLT is a young but powerful scientific code, and we welcome peers around the world to use and improve this code.
+2. Before you start to use this CLT code, please inform us emailing Zhang, Haowei at changhw@zju.edu.cn and Prof. Ma, Zhiwei at zwma@zju.edu.cn so that we can show you how to use this code in detail.
 2. If you want to modificate the CLT source code, or publish paper with any results calculated by CLT, please inform us emailing Zhang, Haowei at changhw@zju.edu.cn and Prof. Ma, Zhiwei at zwma@zju.edu.cn. 
 3. We can help to check the modification or the result before we go to the next step.
 4. Thank you for your cooperation!
