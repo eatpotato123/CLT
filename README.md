@@ -1,5 +1,7 @@
 # CLT
 
+![Image text](https://github.com/changhw/CLT/blob/master/img-folder/export_fig_out.png)
+
 CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD in English), is a full MHD program developed for the tokamak MHD instablity simulations.
 
 ## Table of Contents
