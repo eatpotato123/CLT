@@ -4,9 +4,9 @@ CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD
 
 ## Table of Contents
 * [Development history](#development-history)
-* [Main parameters and coordinates](#Main-parameters-and-coordinates)
-* [Terms of use](#Terms-of-use)
-* [License](#License)
+* [Main parameters and coordinates](#main-parameters-and-coordinates)
+* [Terms of use](#terms-of-use)
+* [License](#license)
 
 
 ## Development history:
