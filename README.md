@@ -18,12 +18,12 @@ tokamak MHD instablity simulations.
 
 ## Development history:
 
-1. The 1st version is developed by Wang, Sheng @Zhejiang University. 
+1. The 1st version is developed by Prof. Ma, Zhiwei & Dr. Wang, Sheng @Zhejiang University. 
     * **This version code is written in 2th order finite difference method in space,**
     * **while in the time-advance, 4th order Runge-Kutta scheme is chosen,**
     * **in the phi(y) direction, either finite difference or pseudo-spectrum method is used.**
     * **the equilibrium is loaded from the psi_xz.dat, q_p_g.dat, and wch.dat(optional)**
-2. The 2nd version is upgraded by Zhang, Wei @Zhejiang University mainly with 
+2. The 2nd version is upgraded by Dr. Zhang, Wei @Zhejiang University mainly with 
     * **4th order finite difference method is employed in the R and Z directions.**
 3. The 3rd version is improved by Zhang, Haowei @Zhejiang University, following features are added:
     * **Cut-cell method is used in the boundary,**
@@ -58,6 +58,10 @@ tokamak MHD instablity simulations.
     * **tpst(n2th+5,npsi): r.z.<->s(psi).p(pol). transit angle in (theta,psi); tps(n2th+5,mps4:mps) for bndry;**
 
 ## Term of use
+CLT is a young but powerful scientific code, and we welcome peers around the world to use and improve this code.
+If you want to modificate the CLT source code, or publish paper with any results calculated by CLT, please inform us emailing Zhang, Haowei at changhw@zju.edu.cn and Prof. Ma, Zhiwei at zwma@zju.edu.cn. 
+We can help to check the modification or the result before we go to the next step.
+Thank you for your cooperation!
 
 ## License
 ©2015-2025 Zhejiang University. All rights reserved.
