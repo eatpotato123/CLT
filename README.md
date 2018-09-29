@@ -4,12 +4,16 @@ CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD
 tokamak MHD instablity simulations.
 
 ## Table of Contents
+* [Results presentation](#results-presentation)
 * [Development history](#development-history)
 * [Main parameters and coordinates](#main-parameters-and-coordinates)
 * [Terms of use](#terms-of-use)
 * [License](#license)
 
+## Results presentation：
+1. m/n=3/1 islands calculated with CLT:
 ![Image text](https://github.com/changhw/CLT/blob/master/img-folder/export_fig_out.png)
+2. Parameters for East shot#52340:
 ![Image text](https://github.com/changhw/CLT/blob/master/img-folder/shot%23052340.03150ke.png)
 
 ## Development history:
