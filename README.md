@@ -3,7 +3,7 @@
 CLT (tokRZ_mpi.f90) with a full name of Ci-Liu-Ti (磁流体 in Chinese, and MHD in English), is a full MHD program developed for the tokamak MHD instablity simulations.
 
 ## Table of Contents
-* [Development history](#development-istory)
+* [Development history](#development-history)
 * [Main parameters and coordinates](#Main-parameters-and-coordinates)
 * [Terms of use](#Terms-of-use)
 * [License](#License)
