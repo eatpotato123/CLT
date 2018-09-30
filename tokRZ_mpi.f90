@@ -1,39 +1,3 @@
-!�ó�������swang���°�����޸Ķ������Ķ����棺1.����Ľ׿ռ侫�ȣ�2�߽�2���������(�޸ĺ󣩣�3����hall effect ������p=03ʱhall effect ��ת��
-! Haowei: can be used for any triangularity like East or the Circle case. Fixed boundary is used.
-!add subroutine decide_hyperbolic_ratio_v2, so can be used for East case etc.
-!a little slow due to the smth_irpt_with_difc
-!can be used for any nprx and nprz
-! add subroutine smth_irpt_with_difc_v2, but useless, weighted difc
-! add subroutine smth_irpt_with_difc_v3, a bit useful, array operation
-! add subroutine bndry8_cut_cell_v2_fixed and efield_cut_cell_v2_fixed with simpler bndry format.
-    !mmode=4
-    !hall=flase
-    !fdiout=5.e-2
-    !mxt=256,myt=32,mzt=256
-     !cfl=1.2
-    ! kap0=5.e-5
-    !x(1-8):total of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz
-!x1(1-8):pertubation of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz
-!xint(1-8):equilibrium of rho,p,vx,vy(v_phi),vz,bx,by(b_phi),bz
-!cur(1-3):pertubation of current _(x,y(phi),z)
-!cint(1-3):equilibrium of current _(x,y(phi),z)
-!ef(1-3):pertubation of e-field _(x,y(phi),z)
-
-!****coordinates***
-!xx(mx),yy(my),zz(mz): coordinates(r,phi,z) in each processes; 
-!xxt(mxt),yyt(myt),zzt(mzt) for total; 
-!xxst(n2th+5,npsi),zzst(n2th+5,npsi) in (theta,psi) grid; 
-!xxs(n2th+5,mps4:mps),zzs(n2th+5,mps4:mps) in (theta,psi) bandary grid;
-
-!thxz(mx,mz): theta coordinates in (r,z) grid; tht(mxt,mzt) for total; 
-!tpxz(mx,mz): r.z.<->s(psi).p(pol). transit angle in (r,z); tpt(mxt,mzt) for total;
-!tcxz(mx,mz): tc=ing(jcb/r^2)dth 
-
-!thst(n2th+5): theta coordinates in (theta,psi) grid;
-!tpst(n2th+5,npsi): r.z.<->s(psi).p(pol). transit angle in (theta,psi); tps(n2th+5,mps4:mps) for bndry;
-!usually,
-   !th=arc/n2th
-   !tp=atan2(psdz,psdx)=atan2(bx,-bz) => cos(tp)=psdx/|grps|=-bz/bp;sin(tp)=psdz/|grps|=bx/bp;
 module declare_oxpoint
       integer jxto,jzto,jxtx,jztx,jyo,nrkyo
       real*8 xx_o,zz_o,ps_o,rr_o,tc_o,yy_o
@@ -22293,13 +22257,11 @@ subroutine gauss_solve(A,b,x,N)
 !  Coded by  :  syz 
 !  Date      :  2010-4-8
 !-----------------------------------------------------
-!  Purpose   :  高斯消去法
-!                 Ax=b
+!  Purpose   :  高斯消去�?!                 Ax=b
 !-----------------------------------------------------
 !  Input  parameters  :
 !       1.   A(N,N)系数矩阵
-!       2.   b(N)右向量
-!       3.   N方程维数
+!       2.   b(N)右向�?!       3.   N方程维数
 !  Output parameters  :
 !       1.  x  方程的根
 !       2.
@@ -22315,7 +22277,7 @@ real*8::A(N,N),b(N),x(N)
 
 real*8::Aup(N,N),bup(N)
 
-!Ab为增广矩阵  [Ab]
+!Ab为增广矩�? [Ab]
 real*8::Ab(N,N+1)
 
 Ab(1:N,1:N)=A
@@ -22324,7 +22286,7 @@ Ab(:,N+1)=b
 
 
 !-------------------------------
-!  这段是 高斯消去法的核心部分
+!  这段�?高斯消去法的核心部分
 do k=1,N-1
 
    do i=k+1,N
@@ -22338,8 +22300,7 @@ do k=1,N-1
 end do
 
 !-----------------------------
-! 经过上一步，Ab已经化为如下形式的矩阵
-!            | *  *  *  *  # |
+! 经过上一步，Ab已经化为如下形式的矩�?!            | *  *  *  *  # |
 !     [A b]= | 0  *  *  *  # |
 !            | 0  0  *  *  # |
 !            | 0  0  0  *  # |
@@ -22362,13 +22323,11 @@ subroutine uptri(A,b,x,N)
 !  Coded by  :  syz 
 !  Date      :  2010-4-8
 !-----------------------------------------------------
-!  Purpose   :  上三角方程组的回带方法
-!                 Ax=b
+!  Purpose   :  上三角方程组的回带方�?!                 Ax=b
 !-----------------------------------------------------
 !  Input  parameters  :
 !       1.   A(N,N)系数矩阵
-!       2.   b(N)右向量
-!       3.   N方程维数
+!       2.   b(N)右向�?!       3.   N方程维数
 !  Output parameters  :
 !       1.  x  方程的根
 !       2.
