@@ -23250,9 +23250,6 @@ subroutine convt_cut_cell
     xz2(jx,jz,jy,m)=d2fc(x1(jx,jz-2,jy,m),x1(jx,jz-1,jy,m),x1(jx,jz,jy,m) &
     ,x1(jx,jz+1,jy,m),x1(jx,jz+2,jy,m),az2(jz),bz2(jz),cz2(jz),dz2(jz))
     
-    xr(jx,jz,jy,m)=xint_dx(jx,jz,m)+x1r(jx,jz,jy,m)  
-    xz(jx,jz,jy,m)=xint_dz(jx,jz,m)+x1z(jx,jz,jy,m)
-    
     
     ! for IR in x direction, x1r xr2 need to be recalculated
     if(gdtp_ep(jx,jz,4).eq.2) then 
@@ -23338,6 +23335,9 @@ subroutine convt_cut_cell
     !		  if(gdtp_ep(jx,jz+1,4).eq.2) then ! in z direction, it is DO B DI IR IR R R, the DI need to be interpolated by B, jz, jz+1, jz+2
     !		  endif
     !	endif
+    
+    xr(jx,jz,jy,m)=xint_dx(jx,jz,m)+x1r(jx,jz,jy,m)  
+    xz(jx,jz,jy,m)=xint_dz(jx,jz,m)+x1z(jx,jz,jy,m)
     
     21 continue
     30 continue
