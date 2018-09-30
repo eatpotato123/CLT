@@ -6,7 +6,7 @@
 ! add subroutine smth_irpt_with_difc_v2, but useless, weighted difc
 ! add subroutine smth_irpt_with_difc_v3, a bit useful, array operation
 ! add subroutine bndry8_cut_cell_v2_fixed and efield_cut_cell_v2_fixed with simpler bndry format.
-    !mmode=2
+    !mmode=4
     !hall=flase
     !fdiout=5.e-2
     !mxt=256,myt=32,mzt=256
@@ -42,12 +42,23 @@ module declare_oxpoint
       logical br_rise
 end module declare_oxpoint
 
+! hw added the meaning of main parameters in declare_parameter
+! mxt: total X grids number
+! myt: total Y grids number
+! mzt: total Z grids number
+! npsi_pgfile: number of data rows in the eq_pgfile_1d.dat
+! nlim: number of data rows in the eq_pgfile_rzlim.dat
+! nbs: number of data rows in the eq_pgfile_rzbs.dat
+! nprx: the processes number in X direction
+! nprz: the processes number in Z direction
+! npry: the processes number in Y direction
 module declare_parameter
       integer, parameter :: mxt=256,myt=32,mzt=256,npsi=111,nthe=101,mbm=4*mxt+4*mzt,mr=4,mdgn=1
-	integer, parameter :: npsi_pgfile=129,nlim=61,nbs=97
+	integer, parameter :: npsi_pgfile=129,nlim=61,nbs=87
       integer, parameter :: npsip=npsi+1,nthe2=nthe+2,nthe3=nthe+3,n2th=2*(nthe-1),ndat=(npsi-1)*(n2th-1),ndat12=(npsi-1)*(nthe+4),ndat34=(npsi-1)*(nthe+4)
+	integer, parameter :: ndata=mxt*mzt
       integer, parameter :: mps=npsip,ids=1,mpsa=npsi,nda=4*ids,mps4=mpsa-nda
-      integer, parameter :: nprx=8,nprz=4,npry=1,nprxz=nprx*nprz,npr=nprxz*npry !,nprbm=min(npr,2*nprx+2*nprz)
+      integer, parameter :: nprx=8,nprz=8,npry=1,nprxz=nprx*nprz,npr=nprxz*npry !,nprbm=min(npr,2*nprx+2*nprz)
       integer, parameter :: mx=mxt/nprx+4, mxm=mxt/nprx,mxn=mx*nprx
       integer, parameter :: mz=mzt/nprz+4, mzm=mzt/nprz,mzn=mz*nprz
       integer, parameter :: my=myt/npry+4, mym=myt/npry,myn=my*npry
@@ -66,8 +77,11 @@ end module declare_parameter
 module bnd_grd_set
       use declare_parameter
 !	integer, parameter :: nxzs=n2th+5, n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
-	integer, parameter :: nxzs=100*(n2th+5), n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
-	real*8, parameter :: zzero=0.d0
+!	integer, parameter :: nxzs=100*(n2th+5), n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
+	logical use_stepon_cut_cell
+	integer nxzs
+	integer, parameter :: n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
+!	real*8, parameter :: zzero=0.d0
 	real*8, parameter :: grd_type_ratio=0.5d0
 	real*8, dimension(m2xt,n7) :: bnd_x
 	real*8, dimension(m2zt,n7) :: bnd_z
@@ -77,19 +91,47 @@ module bnd_grd_set
 	real*8, dimension(m2zt) :: bnd_tmpz
 	real*8, dimension(m2x) :: bnd_tmpx_ep
 	real*8, dimension(m2z) :: bnd_tmpz_ep
-	real*8, dimension(nxzs,mpsa5) :: xxs5, zzs5
-	real*8, dimension(nxzs) :: theta, theta_tmp, xb, zb
+!	real*8, dimension(nxzs,mpsa5) :: xxs5, zzs5
+	real*8, allocatable :: xxs5(:,:), zzs5(:,:)
+!	real*8, dimension(nxzs) :: theta, theta_tmp, xb, zb
+	real*8, allocatable :: theta(:), theta_tmp(:), xb(:), zb(:)
+	! frd_type 1-5 means regualr, irregular, boundary, dropped(outside). dropped(inside) 
+	! for bndx in z direction or for bndz in x direction
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	integer, dimension(mxt,mzt,2) :: grd_type 
-!1-5 means regualr, irregular, boundary, dropped(outside). dropped(inside) for bndx in z direction or for bndz in x direction
+	! gdtp_bndx: for grd_type(:,:,1)
+	! gdtp_bndx(:,:,1) -> -2, -1, 0, +1, +2, the direction and postion of boundary points
+	! gdtp_bndx(:,:,2) -> the nearest rank of boundary point in total bndx_grd
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	integer, dimension(mxt,mzt,2) :: gdtp_bndx 
-!for grd_type(:,:,1), gdtp_bndx(:,:,1) -> -2, -1, 0, +1, +2, gdtp(:,:,2) -> the nearest rank of bndry point in total bndx_grd
-	integer, dimension(mxt,mzt,2) :: gdtp_bndz !for grd_type(:,:,2)
-!for grd_type(:,:,1), gdtp_bndz(:,:,1) -> -2, -1, 0, +1, +2, gdtp(:,:,2) -> the nearest rank of bndry point in total bndz_grd
+	! gdtp_bndz: for grd_type(:,:,2)
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	integer, dimension(mxt,mzt,2) :: gdtp_bndz
+
+	! gdtp_ep stores as follows from 1 to 6:
+	! 1: stores the data type of this point, value of 1-5 means regualr, irregular,
+	! boundary, dropped(outside). dropped(inside) for bndx in z direction;
+	! 2: stores the position of its nearest boundary position, -2-+2 means the
+	! position and direction, like -2 means the boundary point is two grids
+	! away and in negative direction; 
+	! 3: stores the rank of boundary point for each point.
+	! 4: same as 1 but is for bndz in x direction
+	! 5: same as 2 but is for bndz in x direction
+	! 6: same as 3 but is for bndz in x direction
+	!gdtp_ep(:,:,1-3): grd_type(:,:,1) and gdtp_bndx(:,:,1-2)	
+	!gdtp_ep(:,:,4-6): grd_type(:,:,2) and gdtp_bndz(:,:,1-2)	
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	integer, dimension(mx,mz,6) :: gdtp_ep ! the grid type for each point in every processor
-!gdtp_ep(:,:,1-3): grd_type(:,:,1) and gdtp_bndx(:,:,1-2)	
-!gdtp_ep(:,:,4-6): grd_type(:,:,2) and gdtp_bndz(:,:,1-2)	
+	! hypb_ratio is the damping coefficient for the points, it is equal to 0
+	! at the boundary and 1 away from the boundary.
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	real*8, dimension(mx,mz) :: hypb_ratio
+	! nbndx,nbndz the number of boundary points in each direction.
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	integer ngrdb,nbndx,nbndz,nbndx_ep,nbndz_ep
+
+	! store the field and variables values at the boundary points
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	real*8, allocatable :: bndx_grd(:,:), bndz_grd(:,:), bx_bndx(:), bx_bndz(:), bz_bndx(:), bz_bndz(:), &
 				  bxdx_bndx(:), bxdx_bndz(:), bxdz_bndx(:), bxdz_bndz(:), bzdx_bndx(:), bzdx_bndz(:), &
 				  bzdz_bndx(:), bzdz_bndz(:), by_bndx(:), by_bndz(:), bydx_bndx(:), bydx_bndz(:), &
@@ -98,14 +140,13 @@ module bnd_grd_set
 				  uy_bndx(:), uy_bndz(:), uydx_bndx(:), uydx_bndz(:), uydz_bndx(:), uydz_bndz(:), &
 				  pt_bndx(:), pt_bndz(:), ptdx_bndx(:), ptdx_bndz(:), ptdz_bndx(:), ptdz_bndz(:), &
 				  rh_bndx(:), rh_bndz(:), rhdx_bndx(:), rhdx_bndz(:), rhdz_bndx(:), rhdz_bndz(:)
-
 	real*8, allocatable :: x_8bndx(:,:,:), x1_8bndx(:,:,:), xint_8bndx(:,:), cur_3bndx(:,:,:), cint_3bndx(:,:), ef_3bndx(:,:,:), &
 				  x_8bndz(:,:,:), x1_8bndz(:,:,:), xint_8bndz(:,:), cur_3bndz(:,:,:), cint_3bndz(:,:), ef_3bndz(:,:,:), &
 				  updated_bndx(:), updated_bndz(:)
-
+	real*8, allocatable :: b_rmp_bndx(:,:,:), b_rmp_bndz(:,:,:), b_rmp_bndx_tmp1(:,:,:), b_rmp_bndz_tmp1(:,:,:), &
+		  b_rmp_bndx_tmp2(:,:,:), b_rmp_bndz_tmp2(:,:,:)
       real*8, allocatable :: xy_8bndx(:,:,:),xy2_8bndx(:,:,:)
       real*8, allocatable :: xy_8bndz(:,:,:),xy2_8bndz(:,:,:)
-
 	real*8, allocatable :: bndx_grd_ep(:,:), bndz_grd_ep(:,:), bx_bndx_ep(:), bx_bndz_ep(:), bz_bndx_ep(:), bz_bndz_ep(:), &
 				  bxdx_bndx_ep(:), bxdx_bndz_ep(:), bxdz_bndx_ep(:), bxdz_bndz_ep(:), bzdx_bndx_ep(:), bzdx_bndz_ep(:), &
 				  bzdz_bndx_ep(:), bzdz_bndz_ep(:), by_bndx_ep(:), by_bndz_ep(:), bydx_bndx_ep(:), bydx_bndz_ep(:), &
@@ -114,6 +155,9 @@ module bnd_grd_set
 				  uy_bndx_ep(:), uy_bndz_ep(:), uydx_bndx_ep(:), uydx_bndz_ep(:), uydz_bndx_ep(:), uydz_bndz_ep(:), &
 				  pt_bndx_ep(:), pt_bndz_ep(:), ptdx_bndx_ep(:), ptdx_bndz_ep(:), ptdz_bndx_ep(:), ptdz_bndz_ep(:), &
 				  rh_bndx_ep(:), rh_bndz_ep(:), rhdx_bndx_ep(:), rhdx_bndz_ep(:), rhdz_bndx_ep(:), rhdz_bndz_ep(:)
+
+	! the difference coefficient that will be used for the irregular points
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       real*8, dimension(mx,mz) :: az1_irx,bz1_irx,cz1_irx,dz1_irx
       real*8, dimension(mx,mz) :: ax1_irz,bx1_irz,cx1_irz,dx1_irz
       real*8, dimension(mx,mz) :: azbp_irx,bzbp_irx,czbp_irx,dzbp_irx
@@ -126,14 +170,29 @@ module bnd_grd_set
       real*8, dimension(mx,mz) :: a2xbp_irz,b2xbp_irz,c2xbp_irz !d2fbp
       real*8, dimension(mx,mz) :: az2_irx,bz2_irx,cz2_irx,dz2_irx
       real*8, dimension(mx,mz) :: ax2_irz,bx2_irz,cx2_irz,dx2_irz
+	! the distance from the grid points to the nearest boundary point
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       real*8, dimension(mx,mz) :: dist_to_bnd
+
       real*8, dimension(mx,mz) :: theta_ep
 	real*8, dimension(mx,mz) :: wdifcx,wdifcz
 	real*8, dimension(my,8) :: wdix,wdiz
     real*8, dimension(mx,mz,6) :: type_weight
 
+	! the free boundary coefficient that will be used for the boundary points
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	real*8, allocatable :: axm_bndz(:), bxm_bndz(:), cxm_bndz(:), axp_bndz(:), bxp_bndz(:), cxp_bndz(:)
 	real*8, allocatable :: azm_bndx(:), bzm_bndx(:), czm_bndx(:), azp_bndx(:), bzp_bndx(:), czp_bndx(:)
+
+	! store the list of jxjz tag for the irregular points with for type
+	! calcaulated in the subroutine jx_jz_list_bndry8_cut_cell_v2_fixed
+	! used in the subroutine bndry8_cut_cell_v2_fixed & efield_cut_cell_v2_fixed
+	! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	integer, allocatable :: jxjz_list1_bndry(:,:)
+	integer, allocatable :: jxjz_list2_bndry(:,:)
+	integer, allocatable :: jxjz_list3_bndry(:,:)
+	integer, allocatable :: jxjz_list4_bndry(:,:)
+
 end module bnd_grd_set
 
 module declare_grid
@@ -151,7 +210,7 @@ module declare_grid
       real*8, dimension(n2th+5,npsi):: psst,xxst,zzst,tpst,tst,rst 
 
       real*8 aa,aa2,ab,psia,psiam,psia1,psmin,psmax,time
-      real*8 xzero,xmin,xmax,zmin,zmax,dxx,dyy,dzz,xmg,zmg
+      real*8 xzero,zzero,xmin,xmax,zmin,zmax,dxx,dyy,dzz,xmg,zmg,xdim,zdim
 end module declare_grid
 
 !module declare_eq
@@ -169,13 +228,17 @@ module declare
 
       logical lrstrt,smooth,correct,hall,uniformx,uniformz,pressure,resisitive,etaj_in_e,firstmap,smoothc,smoothx1,smoothbout,smoothef,smoothpll,smoothp1ll
       logical halfx,symmetryx,symmetryz,implicitb,implicitv,divb,viscous,analysis,spectral,filt,soundwave,ef_mode,rshear,bootstrap,curdriven,conductpll
-	logical initia_from_pgfile
+	logical initia_from_pgfile, rmp_east, rho_unif
       logical rotation,constp,constu,consto,rho_from_p,eta_from_t,lrstrt_cd,invaryrho,invaryp,ohm_heat,cd_oxpoint,lpetsc 
+      logical linear_mhd !using linear mhd response
       logical,dimension(8) :: lbndxfix
       logical,dimension(3) :: lbndcfix
 !      integer nmode,mmode
       real*8 nmode,mmode,qmode,psmode,rrmode,xxmode,ps1mode,xx1mode,q0,qmin,qmax !,asm,bsm,csm
       real*8 gamma,dt,dtm,cfl
+	real*8, dimension(2) :: ft_rmp ! ft_rmp(1) the old time weight, ft_rmp(2) the new time weight 
+	real*8 omega_rmp, start_rmp, tau_rmp, time_old, finish_rmp
+	real*8 rmp_phi_up, rmp_phi_low, i0_rmp
       real*8 eta0,fmu0,fmuout,pmu0,pmuout,kap0,kapout,kapll0,cdb0,cdbout,cfsm0,cfsmout,cs_atf,fmu_atf,fmuc,pmuc,kapc,etac,etaout,etacut,etbc,etbout,csmp0,csmp0all
       real*8 pssm,pssmw,pstrans,pstransw
       real*8 alamda, alpha, alpha1, caf, caf0, caf1, epsilon, di,cext1
@@ -249,6 +312,21 @@ module declare
       real*8, dimension(my) :: ay1,by1,cy1,dy1
       real*8, dimension(my) :: ay2,by2,cy2,dy2
 
+
+      real*8, dimension(mxt) :: axt1,bxt1,cxt1,dxt1
+      real*8, dimension(mxt) :: axt2,bxt2,cxt2,dxt2
+      real*8, dimension(mxt) :: axtp,bxtp,cxtp,axtm,bxtm,cxtm
+      real*8, dimension(mxt) :: axtbp,bxtbp,cxtbp,axtbm,bxtbm,cxtbm
+      
+      real*8, dimension(mzt) :: azt1,bzt1,czt1,dzt1
+      real*8, dimension(mzt) :: azt2,bzt2,czt2,dzt2
+      real*8, dimension(mzt) :: aztp,bztp,cztp,aztm,bztm,cztm
+      real*8, dimension(mzt) :: aztbp,bztbp,cztbp,aztbm,bztbm,cztbm
+
+!      real*8, dimension(myt) :: ayt1,byt1,cyt1,dyt1
+!      real*8, dimension(myt) :: ayt2,byt2,cyt2,dyt2
+
+
       real*8, dimension(mx,mz,my,8) :: x,xm,xfold,xdif,x1
       real*8, dimension(mx,mz,my,8) :: xr,xy,xz,xr2,xy2,xz2,x1r,x1z
       real*8, dimension(mx,mz,my,3) :: cur,cux,cuy,cuz,xh,ef,efx,efy,efz,eta1j,perb,cub,cud !,divb_clean
@@ -282,6 +360,13 @@ module declare
       real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz,by,bydx,bydz,pdx,pdz,cx,cz,cy,ux,uy,uz, &
 		  uxdx, uxdz, uydx,uydz, uzdx, uzdz, bpol
       real*8, dimension(mxt,mzt) :: pt,ptdx,ptdz,rh,rhdx,rhdz
+	real*8, dimension(mx,mz,my) :: bx_rmp, by_rmp, bz_rmp
+!	real*8, dimension(mxt,mzt,myt) :: Ax_rmp, Ay_rmp, Az_rmp
+	real*8, dimension(mx,mz,my,3) :: b_rmp
+	real*8, dimension(mx,mz,my,3) :: b_rmp_out
+	real*8, dimension(mx,mz,my,3) :: b_rmp_in, b_rmp_tmp1, b_rmp_tmp2
+	real*8, dimension(mxt,mzt,my,3) :: At_rmp, dAx_rmp, dAy_rmp, dAz_rmp
+	real*8, dimension(mxt,mzt,my,3) :: Bt_rmp
 
 !npr
 !npr_boundary
@@ -349,11 +434,10 @@ module declare
     if(nrank==0) timestart=mpi_wtime()
 ! initializing
     nstep=0
-    nstop=400000
-!    nrcd=10000
-    nrcd=10000
-    ndgn=10
-    neng=10
+    nstop=800000
+    nrcd=20000
+    ndgn=50
+    neng=50
     ncd=10
     nper=100
     nrank_dgn=nsize-1
@@ -386,27 +470,11 @@ module declare
     enddo
 
 
-
-!mpi_comm
-!       call mpi_comm_group(mpi_comm_world,group_world,ierror)
-!       do kxz=0,nsizexz-1
-!       do ky=0,npry-1
-!       nrank_in_gy(ky,kxz)=kxz+ky*nprxz
-!       enddo
-!
-!       call mpi_group_incl(group_world,npry,nrank_in_gy(:,kxz),group_y(kxz),ierror)
-!       call mpi_comm_create(mpi_comm_world,group_y(kxz),comm_y(kxz),ierror)
-!       call mpi_comm_size(comm_y(kxz), nysize(kxz), ierror)
-!       call mpi_comm_rank(comm_y(kxz), nyrank(kxz), ierror)
-!
-!       call mpi_group_rank(group_y(kxz),ngy_rank(kxz),ierror) 
-!       enddo
        call mpi_comm_split(mpi_comm_world,nrankxz,0,mycomm_y,ierror)
        call mpi_comm_rank(mycomm_y,nrank_gy,ierror) 
        call mpi_comm_size(mycomm_y,nsize_gy,ierror) 
        call mpi_allgather(nrank,1,mpi_integer,nrankiny,1,mpi_integer,mycomm_y,ierror)
        write(*,*) nrank,'commy=',mycomm_y,nrankxz,nrank_gy,nrankiny(:)
-!mpi_comm
 
 
     ix_first=1
@@ -451,10 +519,14 @@ module declare
  
     call init_ps1
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! haowei add for cut cell initialize
+	if(use_stepon_cut_cell) then
+
     	call find_bnd_grd
 !	call find_bnd_grd_in_each_proc
-     	call map_nova_to_bnd_grd
+!    	call map_nova_to_bnd_grd
+	call map_int_to_bnd_grd
 !    	call map_nova_to_bnd_grd_in_each_proc
 	call find_ir_pnt_bndx
 	call find_ir_pnt_bndz
@@ -463,6 +535,8 @@ module declare
 !	call decide_hyperbolic_ratio
 	call decide_hyperbolic_ratio_v2
 	call data_type_weight
+	call jx_jz_list_bndry8_cut_cell_v2_fixed
+
 	if(nrank.eq.0) then
 	open(unit=193,file='grd_ir_bndx.dat',status='unknown',form='formatted')
 	open(unit=194,file='grd_ir_bndz.dat',status='unknown',form='formatted')
@@ -473,22 +547,43 @@ module declare
   511 format(5(1x,e12.5)) 
 	endif
 
+	else ! set all point at gdtp_ep=1, regular point
+	
+	do jz=iz_first,iz_last
+	do jx=ix_first,ix_last
+      if(psi(jx,jz).lt.psia1) then
+	gdtp_ep(jx,jz,:)=1
+	else
+	gdtp_ep(jx,jz,:)=4
+	endif
+	enddo
+	enddo
 
 
-  !   if(lpetsc .or. lpll .ge. 4) call init_a  
-!    x1=x
+	endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!	if(rmp_east) call rmp_east_pert
+	if(rmp_east) call rmp_east_pert_withA
+	
+
 !    call calculate_ps1
 !    call recrd_ps1
 !    goto 900
+	if(initia_from_pgfile) pssmw=5.*(psia-psmin)/200.d0
       pstransw=pssmw
       pstrans=psia-pssmw !*cos(time)
       
       do jz=iz_first,iz_last
       do jx=ix_first,ix_last
-	if(psi(jx,jz).lt.psia1) then ! keep the diffusion term cofficient only in closed flux, haowei, 20180402
+!	if(psi(jx,jz).lt.psia1) then ! keep the diffusion term cofficient only in closed flux, haowei, 20180402
+      if(gdtp_ep(jx,jz,1).ne.4) then
         cfsmb(jx,jz)=cfsm0+0.5*cfsmout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))
         etaint(jx,jz)=eta0 !*(1+(etacut-1)*tanh((tmint(jx,jz)/tm00)**(-1.5)/(etacut-1)))
         eta(jx,jz,:)=etaint(jx,jz)
+
+!	  if(psi(jx,jz).gt.psia1) eta(jx,jz,:)=1.d-3
+
         fmu(jx,jz)=fmu0+0.5*fmuout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))+fmuc*(1-tanh((psi(jx,jz)-psmin)/pstransw**0.5))
         pmu(jx,jz)=pmu0+0.5*pmuout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))+pmuc*(1-tanh((psi(jx,jz)-psmin)/pstransw**0.5))
         kap(jx,jz)=kap0+0.5*kapout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))+kapc*(1-tanh((psi(jx,jz)-psmin)/pstransw**0.5))
@@ -584,6 +679,7 @@ module declare
     open(unit=18,file='nstime.dat',status='unknown',form='formatted') 
     open(unit=211,file='eymaxmin.dat',status='unknown',form='formatted')    
     open(unit=311,file='oxpoint.dat',status='unknown',form='formatted')
+    open(unit=413,file='debug.dat',status='unknown',form='formatted')
     else
     open(unit=11,file='dgnmax1.dat',status='unknown',form='formatted',position='append')
     open(unit=111,file='dgnmax.dat',status='unknown',form='formatted',position='append')
@@ -595,6 +691,7 @@ module declare
     open(unit=18,file='nstime.dat',status='unknown',form='formatted',position='append')
     open(unit=211,file='eymaxmin.dat',status='unknown',form='formatted',position='append')
     open(unit=311,file='oxpoint.dat',status='unknown',form='formatted',position='append')
+    open(unit=413,file='debug.dat',status='unknown',form='formatted',position='append')
     endif
     endif
 
@@ -635,31 +732,68 @@ module declare
       if(eta_from_t) call calculate_eta
       call recrd_dssp  
     
-    
-!    	call find_bnd_grd
-!!	call find_bnd_grd_in_each_proc
-!     	call map_nova_to_bnd_grd
-!!    	call map_nova_to_bnd_grd_in_each_proc
-!	call find_ir_pnt_bndx
-!	call find_ir_pnt_bndz
-!	call decide_grd_type_in_each_proc
-!	call calculate_dnfm_coeff_for_ir_bndx_point
-!!	call decide_hyperbolic_ratio
-!	call decide_hyperbolic_ratio_v2
-!	call data_type_weight
-!	if(nrank.eq.0) then
-!	open(unit=193,file='grd_ir_bndx.dat',status='unknown',form='formatted')
-!	open(unit=194,file='grd_ir_bndz.dat',status='unknown',form='formatted')
-!	write(193,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,1)*1.d0,gdtp_bndx(jx,jz,1)*1.d0,gdtp_bndx(jx,jz,2)*1.d0),jx=1,mxt),jz=1,mzt)
-!	write(194,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,2)*1.d0,gdtp_bndz(jx,jz,1)*1.d0,gdtp_bndz(jx,jz,2)*1.d0),jx=1,mxt),jz=1,mzt)
-!	close(193)
-!	close(194)
-!  511 format(5(1x,e12.5)) 
-!	endif
 
+	if(rmp_east) then
+	allocate(b_rmp_bndx_tmp1(nbndx,my,3))
+	allocate(b_rmp_bndz_tmp1(nbndz,my,3))
+	allocate(b_rmp_bndx_tmp2(nbndx,my,3))
+	allocate(b_rmp_bndz_tmp2(nbndz,my,3))
 
+! nrmp=1, shifted pi/2 between b_tmp1 and b_tmp2		  	
+	b_rmp_tmp1=b_rmp_out
+	b_rmp_tmp2(:,:,1:myt*3/4+1,:)=b_rmp_out(:,:,myt/4+1:myt+1,:)
+	b_rmp_tmp2(:,:,myt*3/4+2:myt,:)=b_rmp_out(:,:,2:myt/4,:)
+	b_rmp_tmp2(:,:,myt+1:myt+4,:)=b_rmp_tmp2(:,:,1:4,:)
+		  	
+	b_rmp_bndx_tmp1=b_rmp_bndx
+	b_rmp_bndx_tmp2(:,1:myt*3/4+1,:)=b_rmp_bndx(:,myt/4+1:myt+1,:)
+	b_rmp_bndx_tmp2(:,myt*3/4+2:myt,:)=b_rmp_bndx(:,2:myt/4,:)
+	b_rmp_bndx_tmp2(:,myt+1:myt+4,:)=b_rmp_bndx_tmp2(:,1:4,:)
 
+	b_rmp_bndz_tmp1=b_rmp_bndz
+	b_rmp_bndz_tmp2(:,1:myt*3/4+1,:)=b_rmp_bndz(:,myt/4+1:myt+1,:)
+	b_rmp_bndz_tmp2(:,myt*3/4+2:myt,:)=b_rmp_bndz(:,2:myt/4,:)
+	b_rmp_bndz_tmp2(:,myt+1:myt+4,:)=b_rmp_bndz_tmp2(:,1:4,:)
+
+	omega_rmp=0.d0
+	start_rmp=0.d0
+	finish_rmp=800.d0
+!	time_old=start_rmp
+	tau_rmp=10.d0
+	endif
 100 continue
+	
+! updated the rotation model 0601, haowei
+	if(rmp_east) then ! open the rmp after 160tA
+
+!	ft_rmp(1)=1.d0-exp(-max(0.d0,time-dt-start_rmp)/tau_rmp) ! the old time
+!	ft_rmp(2)=1.d0-exp(-max(0.d0,time-start_rmp)/tau_rmp) ! the new time
+
+	if(time.lt.finish_rmp) then
+	ft_rmp(1)=1.d0*max(0.d0,min(time-dt-start_rmp,tau_rmp))/tau_rmp ! the old time
+	ft_rmp(2)=1.d0*max(0.d0,min(time-start_rmp,tau_rmp))/tau_rmp ! the new time
+	else
+	ft_rmp(1)=1.d0-1.d0*max(0.d0,min(time-dt-finish_rmp,tau_rmp))/tau_rmp
+	ft_rmp(2)=1.d0-1.d0*max(0.d0,min(time-finish_rmp,tau_rmp))/tau_rmp
+	endif
+
+	x(:,:,:,6:8)=x(:,:,:,6:8)-b_rmp_out(:,:,:,1:3)*ft_rmp(1)
+   	x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)-b_rmp_bndx(:,:,1:3)*ft_rmp(1)
+   	x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)-b_rmp_bndz(:,:,1:3)*ft_rmp(1)
+	
+	if(omega_rmp.ne.0.d0) then
+	b_rmp_out=b_rmp_tmp1*cos(omega_rmp*(time-start_rmp))+b_rmp_tmp2*sin(omega_rmp*(time-start_rmp))
+	b_rmp_bndx=b_rmp_bndx_tmp1*cos(omega_rmp*(time-start_rmp))+b_rmp_bndx_tmp2*sin(omega_rmp*(time-start_rmp))
+	b_rmp_bndz=b_rmp_bndz_tmp1*cos(omega_rmp*(time-start_rmp))+b_rmp_bndz_tmp2*sin(omega_rmp*(time-start_rmp))
+	endif
+
+! B=B+dB_rmp
+	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp_out(:,:,:,1:3)*ft_rmp(2)
+   	x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)*ft_rmp(2)
+	x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)*ft_rmp(2)
+	endif
+
+
 
       call setdt
 !mpi   ----------------------------------------------------------------
@@ -668,6 +802,7 @@ module declare
                         mpi_comm_world,ierror)
 !mpi   ----------------------------------------------------------------
     if(nrank.eq.0) write(*,*) nstep,'t=',time,'dt=',dt
+    if(nrank.eq.0) write(413,*) nstep,'t=',time,'dt=',dt,'ft_rmp=', ft_rmp(2)
     if(dt.lt.1.e-5) goto 900
 !     if(nstep .eq. 1)  call recrd1
 !     if(nstep .eq. 10)  call recrd10
@@ -719,12 +854,18 @@ module declare
 
       endif          
       endif
+
     
     if(soundwave) then
     call stepon_atfs
     else
-!    call stepon
+
+	if(use_stepon_cut_cell) then
 	call stepon_cut_cell
+	else
+	call stepon
+	endif
+
     endif
 !cd_oxpoint3:ey
     if(cd_oxpoint .and. lcdox==3 .and. mod(nstep,ncd).eq.0 ) call distribution_cd_oxpoint(ef(:,:,3,2))
@@ -744,6 +885,7 @@ module declare
       close(112)
       close(211)
       close(311)
+      close(413)
       if(nrank==0) then
       timeend=mpi_wtime()
       write(*,*) 'run time=',timeend-timestart
@@ -781,13 +923,24 @@ module declare
       use declare
       include 'mpif.h'
 !
-      cfl=1.2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! use the cut_cell method for boundary conditions
+	use_stepon_cut_cell=.false.
+! read the equilibrium from pfile and gfile form kinetic-eift	
+! if this is ture, use_stepon_cut_cell must be true
+	initia_from_pgfile=.false.
+	if(initia_from_pgfile) use_stepon_cut_cell=.true.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      cfl=1.5
       cext1=0.5
       caf=0.75d0
       lpetsc=.false. !.false. 
       constp=.false. !.true.
       p00=0.0001
-      rotation=.false.
+      rotation=.true.
       lrot=2
       constu=.false. !.true.
       uy0=0.00
@@ -806,7 +959,6 @@ module declare
       qdgn(1)=qmode
 !!mode
 
-	initia_from_pgfile=.true.
       firstmap=.true.
       rshear=.false. !.true.
       spectral=.false. 
@@ -821,12 +973,18 @@ module declare
       invaryrho=.false. !.true.
       invaryp=.false. !.true.
 
+	rho_unif=.false.
 !      correct=.true.
       uniformx=.true.
       uniformz=.true.
 !      halfx=.false.
       symmetryx=.false.
-      symmetryz=.false.
+
+	if(initia_from_pgfile) then
+	symmetryz=.false.
+	else
+      symmetryz=.true.
+	endif
       analysis=.false. !.true.
 
       resisitive=.true.
@@ -838,10 +996,17 @@ module declare
       soundwave=.false. !.true.
       eta_from_t=.false. !.true.
       rho_from_p=.false. !.true.
+	linear_mhd=.false.
 
       ohm_heat =.false. 
       implicitb=.false. !.true.
       implicitv=.false. !.true.  
+	rmp_east=.false.
+	if((rmp_east).and.(.not.lrstrt)) nst=2
+	rmp_phi_up=0.d0
+	rmp_phi_low=0.d0
+	i0_rmp=100 ! A ~ usually = kA order
+
 
 !!parameter
       gamma=5./3.
@@ -866,7 +1031,7 @@ module declare
        kap0=5.e-5
       kapout=1.e-4
       kapc=0.e-6
-      eta0=1.e-5
+      eta0=1.d-6
       
       !fmu0   =2.5e-5
       !fmuout =5.e-4
@@ -977,6 +1142,19 @@ module declare
       alpha=1.
       alpha1=0.0
 
+! zhanghaowei add for cut-cell
+    if(initia_from_pgfile) then
+		nxzs=100*(n2th+5)
+    else
+		nxzs=n2th+5
+    endif
+    allocate(xxs5(nxzs,mpsa5))
+    allocate(zzs5(nxzs,mpsa5))
+    allocate(theta(nxzs))
+    allocate(theta_tmp(nxzs))
+    allocate(xb(nxzs))
+    allocate(zb(nxzs))
+
 	if(initia_from_pgfile) then
 	call read_pgfile
 	else
@@ -985,6 +1163,10 @@ module declare
 
       call gridpnt
 !!!!
+	if(.not.initia_from_pgfile) then
+	xdim=dabs(xxt(mxt)-xxt(1))/2.d0
+	zdim=dabs(zzt(mzt)-zzt(1))/2.d0
+	endif
 
       cd00=fcd*cip
       
@@ -1009,6 +1191,7 @@ module declare
       endif
 
       time=0.
+      dt=0.
       nstep=0
 
       if(nrank==0) call print_input
@@ -1059,6 +1242,11 @@ module declare
       write(*,*) '---------------------------'
       write(*,*) 'epsilon=',epsilon
       write(*,*) 'xzero=',xzero
+      write(*,*) 'zzero=',zzero
+      write(*,*) 'xmg=',xmg
+      write(*,*) 'zmg=',zmg
+      write(*,*) 'xdim=',xdim
+      write(*,*) 'zdim=',zdim
       write(*,*) 'xmin =',xmin
       write(*,*) 'xmax =',xmax
       write(*,*) 'zmin =',zmin
@@ -1228,6 +1416,29 @@ module declare
       dx2(jx)=-(dxp1*ax2(jx)+dxm1*bx2(jx) &
          +dxp2*cx2(jx))/dxm2
     1 continue
+
+
+      do jx=3,mxt-2
+      dxp1=xxt(jx+1)-xxt(jx)
+      dxm1=xxt(jx)-xxt(jx-1)
+      dxp2=xxt(jx+2)-xxt(jx)
+      dxm2=xxt(jx)-xxt(jx-2)
+      f1= dxp1**2+dxp1*dxm2
+      f2= dxp1**3-dxp1*dxm2**2
+      f3= dxp1**4+dxp1*dxm2**3
+      g1=-dxm1**2+dxm1*dxm2
+      g2= dxm1**3-dxm1*dxm2**2
+      g3=-dxm1**4+dxm1*dxm2**3
+      h1= dxp2**2+dxp2*dxm2
+      h2= dxp2**3-dxp2*dxm2**2
+      h3= dxp2**4+dxp2*dxm2**3
+      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+      axt2(jx)=2.*h3*(g2*h3-g3*h2)/ca1
+      bxt2(jx)=2.*h3*(h2*f3-h3*f2)/ca1
+      cxt2(jx)=2.*h3*(f2*g3-f3*g2)/ca1
+      dxt2(jx)=-(dxp1*axt2(jx)+dxm1*bxt2(jx) &
+         +dxp2*cxt2(jx))/dxm2
+ 	enddo
     
       do 2 jx=ix_first+2,ix_last-2
       dxp1=xx(jx+1)-xx(jx)
@@ -1251,6 +1462,27 @@ module declare
          +dxp2**2*cx1(jx))/dxm2**2
     2 continue
     
+      do jx=3,mxt-2
+      dxp1=xxt(jx+1)-xxt(jx)
+      dxm1=xxt(jx)-xxt(jx-1)
+      dxp2=xxt(jx+2)-xxt(jx)
+      dxm2=xxt(jx)-xxt(jx-2)
+      f1= dxp1   +dxp1**4/dxm2**3
+      f2= dxp1**2-dxp1**4/dxm2**2
+      f3= dxp1**3+dxp1**4/dxm2
+      g1= dxm1   -dxm1**4/dxm2**3
+      g2=-dxm1**2+dxm1**4/dxm2**2
+      g3= dxm1**3-dxm1**4/dxm2
+      h1= dxp2   +dxp2**4/dxm2**3
+      h2= dxp2**2-dxp2**4/dxm2**2
+      h3= dxp2**3+dxp2**4/dxm2
+      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+      axt1(jx)=h3*(g2*h3-g3*h2)/ca1
+      bxt1(jx)=h3*(h2*f3-h3*f2)/ca1
+      cxt1(jx)=h3*(f2*g3-f3*g2)/ca1
+      dxt1(jx)=(dxp1**2*axt1(jx)-dxm1**2*bxt1(jx) &
+         +dxp2**2*cxt1(jx))/dxm2**2
+ 	enddo
 
       do 3 jx=ix_first,ix_last-3
       dxp1=xx(jx+1)-xx(jx)
@@ -1265,6 +1497,21 @@ module declare
       bxp(jx)=-f2/ca1
       cxp(jx)=(1-axp(jx)*dxp1-bxp(jx)*dxp2)/dxp3
     3 continue
+
+      do jx=1,mxt-3
+      dxp1=xxt(jx+1)-xxt(jx)
+      dxp2=xxt(jx+2)-xxt(jx)
+      dxp3=xxt(jx+3)-xxt(jx)
+      f1=dxp1-dxp1**3/dxp3**2
+      f2=dxp1**2-dxp1**3/dxp3
+      g1=dxp2-dxp2**3/dxp3**2
+      g2=dxp2**2-dxp2**3/dxp3
+      ca1=f1*g2-f2*g1
+      axtp(jx)=g2/ca1
+      bxtp(jx)=-f2/ca1
+      cxtp(jx)=(1-axtp(jx)*dxp1-bxtp(jx)*dxp2)/dxp3
+	enddo
+
       do 4 jx=ix_first+3,ix_last
       dxm1=xx(jx)-xx(jx-1)
       dxm2=xx(jx)-xx(jx-2)
@@ -1278,6 +1525,21 @@ module declare
       bxm(jx)=-f2/ca1
       cxm(jx)=(1-axm(jx)*dxm1-bxm(jx)*dxm2)/dxm3
     4 continue
+
+      do jx=4,mxt
+      dxm1=xxt(jx)-xxt(jx-1)
+      dxm2=xxt(jx)-xxt(jx-2)
+      dxm3=xxt(jx)-xxt(jx-3)
+      f1=dxm1-dxm1**3/dxm3**2
+      f2=dxm1**2-dxm1**3/dxm3
+      g1=dxm2-dxm2**3/dxm3**2
+      g2=dxm2**2-dxm2**3/dxm3
+      ca1=f1*g2-f2*g1
+      axtm(jx)=g2/ca1
+      bxtm(jx)=-f2/ca1
+      cxtm(jx)=(1-axtm(jx)*dxm1-bxtm(jx)*dxm2)/dxm3
+      enddo
+
       do 5 jx=ix_first+1,ix_last-2
       dxm1=xx(jx)-xx(jx-1)
       dxp1=xx(jx+1)-xx(jx)
@@ -1291,6 +1553,21 @@ module declare
       bxbp(jx)=-f2/ca1
       cxbp(jx)=(1+axbp(jx)*dxm1-bxbp(jx)*dxp1)/dxp2
     5 continue
+
+      do jx=2,mxt-2
+      dxm1=xxt(jx)-xxt(jx-1)
+      dxp1=xxt(jx+1)-xxt(jx)
+      dxp2=xxt(jx+2)-xxt(jx)
+      f1=-dxm1+dxm1**3/dxp2**2
+      f2=dxm1**2+dxm1**3/dxp2
+      g1=dxp1-dxp1**3/dxp2**2
+      g2=dxp1**2-dxp1**3/dxp2
+      ca1=f1*g2-f2*g1
+      axtbp(jx)=g2/ca1
+      bxtbp(jx)=-f2/ca1
+      cxtbp(jx)=(1+axtbp(jx)*dxm1-bxtbp(jx)*dxp1)/dxp2
+      enddo
+
       do 6 jx=ix_first+2,ix_last-1
       dxp1=xx(jx+1)-xx(jx)
       dxm1=xx(jx)-xx(jx-1)
@@ -1304,6 +1581,20 @@ module declare
       bxbm(jx)=-f2/ca1
       cxbm(jx)=(1+axbm(jx)*dxp1-bxbm(jx)*dxm1)/dxm2
     6 continue
+
+      do jx=3,mxt-1
+      dxp1=xxt(jx+1)-xxt(jx)
+      dxm1=xxt(jx)-xxt(jx-1)
+      dxm2=xxt(jx)-xxt(jx-2)
+      f1=-dxp1+dxp1**3/dxm2**2
+      f2=dxp1**2+dxp1**3/dxm2
+      g1=dxm1-dxm1**3/dxm2**2
+      g2=dxm1**2-dxm1**3/dxm2
+      ca1=f1*g2-f2*g1
+      axtbm(jx)=g2/ca1
+      bxtbm(jx)=-f2/ca1
+      cxtbm(jx)=(1+axtbm(jx)*dxp1-bxtbm(jx)*dxm1)/dxm2
+      enddo
 
       do 21 jz=iz_first+2,iz_last-2
       dzp1=zz(jz+1)-zz(jz)
@@ -1326,6 +1617,29 @@ module declare
       dz2(jz)=-(dzp1*az2(jz)+dzm1*bz2(jz) &
          +dzp2*cz2(jz))/dzm2
    21 continue
+
+
+      do jz=3,mzt-2
+      dzp1=zzt(jz+1)-zzt(jz)
+      dzm1=zzt(jz)-zzt(jz-1)
+      dzp2=zzt(jz+2)-zzt(jz)
+      dzm2=zzt(jz)-zzt(jz-2)
+      f1= dzp1**2+dzp1*dzm2
+      f2= dzp1**3-dzp1*dzm2**2
+      f3= dzp1**4+dzp1*dzm2**3
+      g1=-dzm1**2+dzm1*dzm2
+      g2= dzm1**3-dzm1*dzm2**2
+      g3=-dzm1**4+dzm1*dzm2**3
+      h1= dzp2**2+dzp2*dzm2
+      h2= dzp2**3-dzp2*dzm2**2
+      h3= dzp2**4+dzp2*dzm2**3
+      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+      azt2(jz)=2.*h3*(g2*h3-g3*h2)/ca1
+      bzt2(jz)=2.*h3*(h2*f3-h3*f2)/ca1
+      czt2(jz)=2.*h3*(f2*g3-f3*g2)/ca1
+      dzt2(jz)=-(dzp1*azt2(jz)+dzm1*bzt2(jz) &
+         +dzp2*czt2(jz))/dzm2
+ 	enddo
     
       do 22 jz=iz_first+2,iz_last-2
       dzp1=zz(jz+1)-zz(jz)
@@ -1349,6 +1663,27 @@ module declare
          +dzp2**2*cz1(jz))/dzm2**2
    22 continue
     
+      do jz=3,mzt-2
+      dzp1=zzt(jz+1)-zzt(jz)
+      dzm1=zzt(jz)-zzt(jz-1)
+      dzp2=zzt(jz+2)-zzt(jz)
+      dzm2=zzt(jz)-zzt(jz-2)
+      f1= dzp1   +dzp1**4/dzm2**3
+      f2= dzp1**2-dzp1**4/dzm2**2
+      f3= dzp1**3+dzp1**4/dzm2
+      g1= dzm1   -dzm1**4/dzm2**3
+      g2=-dzm1**2+dzm1**4/dzm2**2
+      g3= dzm1**3-dzm1**4/dzm2
+      h1= dzp2   +dzp2**4/dzm2**3
+      h2= dzp2**2-dzp2**4/dzm2**2
+      h3= dzp2**3+dzp2**4/dzm2
+      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+      azt1(jz)=h3*(g2*h3-g3*h2)/ca1
+      bzt1(jz)=h3*(h2*f3-h3*f2)/ca1
+      czt1(jz)=h3*(f2*g3-f3*g2)/ca1
+      dzt1(jz)=(dzp1**2*azt1(jz)-dzm1**2*bzt1(jz) &
+         +dzp2**2*czt1(jz))/dzm2**2
+ 	enddo
 
       do 23 jz=iz_first,iz_last-3
       dzp1=zz(jz+1)-zz(jz)
@@ -1363,6 +1698,21 @@ module declare
       bzp(jz)=-f2/ca1
       czp(jz)=(1-azp(jz)*dzp1-bzp(jz)*dzp2)/dzp3
    23 continue
+
+      do jz=1,mzt-3
+      dzp1=zzt(jz+1)-zzt(jz)
+      dzp2=zzt(jz+2)-zzt(jz)
+      dzp3=zzt(jz+3)-zzt(jz)
+      f1=dzp1-dzp1**3/dzp3**2
+      f2=dzp1**2-dzp1**3/dzp3
+      g1=dzp2-dzp2**3/dzp3**2
+      g2=dzp2**2-dzp2**3/dzp3
+      ca1=f1*g2-f2*g1
+      aztp(jz)=g2/ca1
+      bztp(jz)=-f2/ca1
+      cztp(jz)=(1-aztp(jz)*dzp1-bztp(jz)*dzp2)/dzp3
+	enddo
+
       do 24 jz=iz_first+3,iz_last
       dzm1=zz(jz)-zz(jz-1)
       dzm2=zz(jz)-zz(jz-2)
@@ -1376,6 +1726,22 @@ module declare
       bzm(jz)=-f2/ca1
       czm(jz)=(1-azm(jz)*dzm1-bzm(jz)*dzm2)/dzm3
    24 continue
+
+      do jz=4,mzt
+      dzm1=zzt(jz)-zzt(jz-1)
+      dzm2=zzt(jz)-zzt(jz-2)
+      dzm3=zzt(jz)-zzt(jz-3)
+      f1=dzm1-dzm1**3/dzm3**2
+      f2=dzm1**2-dzm1**3/dzm3
+      g1=dzm2-dzm2**3/dzm3**2
+      g2=dzm2**2-dzm2**3/dzm3
+      ca1=f1*g2-f2*g1
+      aztm(jz)=g2/ca1
+      bztm(jz)=-f2/ca1
+      cztm(jz)=(1-aztm(jz)*dzm1-bztm(jz)*dzm2)/dzm3
+	enddo
+
+
       do 25 jz=iz_first+1,iz_last-2
       dzm1=zz(jz)-zz(jz-1)
       dzp1=zz(jz+1)-zz(jz)
@@ -1389,6 +1755,21 @@ module declare
       bzbp(jz)=-f2/ca1
       czbp(jz)=(1+azbp(jz)*dzm1-bzbp(jz)*dzp1)/dzp2
    25 continue
+
+      do jz=2,mzt-2
+      dzm1=zzt(jz)-zzt(jz-1)
+      dzp1=zzt(jz+1)-zzt(jz)
+      dzp2=zzt(jz+2)-zzt(jz)
+      f1=-dzm1+dzm1**3/dzp2**2
+      f2=dzm1**2+dzm1**3/dzp2
+      g1=dzp1-dzp1**3/dzp2**2
+      g2=dzp1**2-dzp1**3/dzp2
+      ca1=f1*g2-f2*g1
+      aztbp(jz)=g2/ca1
+      bztbp(jz)=-f2/ca1
+      cztbp(jz)=(1+aztbp(jz)*dzm1-bztbp(jz)*dzp1)/dzp2
+	enddo
+
       do 26 jz=iz_first+2,iz_last-1
       dzp1=zz(jz+1)-zz(jz)
       dzm1=zz(jz)-zz(jz-1)
@@ -1402,6 +1783,20 @@ module declare
       bzbm(jz)=-f2/ca1
       czbm(jz)=(1+azbm(jz)*dzp1-bzbm(jz)*dzm1)/dzm2
    26 continue
+
+      do jz=3,mzt-1
+      dzp1=zzt(jz+1)-zzt(jz)
+      dzm1=zzt(jz)-zzt(jz-1)
+      dzm2=zzt(jz)-zzt(jz-2)
+      f1=-dzp1+dzp1**3/dzm2**2
+      f2=dzp1**2+dzp1**3/dzm2
+      g1=dzm1-dzm1**3/dzm2**2
+      g2=dzm1**2-dzm1**3/dzm2
+      ca1=f1*g2-f2*g1
+      aztbm(jz)=g2/ca1
+      bztbm(jz)=-f2/ca1
+      cztbm(jz)=(1+aztbm(jz)*dzp1-bztbm(jz)*dzm1)/dzm2
+	enddo
 
       do 31 jy=iy_first+2,iy_last-2
 !      do 31 jy=1,my
@@ -1425,6 +1820,29 @@ module declare
       dy2(jy)=-(dyp1*ay2(jy)+dym1*by2(jy) &
          +dyp2*cy2(jy))/dym2
    31 continue
+
+!      do jy=3,myt-2
+!!      do 31 jy=1,my
+!      dyp1=yyt(jy+1)-yyt(jy)
+!      dym1=yyt(jy)-yyt(jy-1)
+!      dyp2=yyt(jy+2)-yyt(jy)
+!      dym2=yyt(jy)-yyt(jy-2)
+!      f1= dyp1**2+dyp1*dym2
+!      f2= dyp1**3-dyp1*dym2**2
+!      f3= dyp1**4+dyp1*dym2**3
+!      g1=-dym1**2+dym1*dym2
+!      g2= dym1**3-dym1*dym2**2
+!      g3=-dym1**4+dym1*dym2**3
+!      h1= dyp2**2+dyp2*dym2
+!      h2= dyp2**3-dyp2*dym2**2
+!      h3= dyp2**4+dyp2*dym2**3
+!      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+!      ayt2(jy)=2.*h3*(g2*h3-g3*h2)/ca1
+!      byt2(jy)=2.*h3*(h2*f3-h3*f2)/ca1
+!      cyt2(jy)=2.*h3*(f2*g3-f3*g2)/ca1
+!      dyt2(jy)=-(dyp1*ayt2(jy)+dym1*byt2(jy) &
+!         +dyp2*cyt2(jy))/dym2
+! 	enddo
     
       do 32 jy=iy_first+2,iy_last-2
 !      do 32 jy=1,my
@@ -1448,6 +1866,29 @@ module declare
       dy1(jy)=(dyp1**2*ay1(jy)-dym1**2*by1(jy) &
          +dyp2**2*cy1(jy))/dym2**2
    32 continue
+
+!      do jy=3,myt-2
+!!      do 32 jy=1,my
+!      dyp1=yyt(jy+1)-yyt(jy)
+!      dym1=yyt(jy)-yyt(jy-1)
+!      dyp2=yyt(jy+2)-yyt(jy)
+!      dym2=yyt(jy)-yyt(jy-2)
+!      f1= dyp1   +dyp1**4/dym2**3
+!      f2= dyp1**2-dyp1**4/dym2**2
+!      f3= dyp1**3+dyp1**4/dym2
+!      g1= dym1   -dym1**4/dym2**3
+!      g2=-dym1**2+dym1**4/dym2**2
+!      g3= dym1**3-dym1**4/dym2
+!      h1= dyp2   +dyp2**4/dym2**3
+!      h2= dyp2**2-dyp2**4/dym2**2
+!      h3= dyp2**3+dyp2**4/dym2
+!      ca1= (f1*h3-f3*h1)*(g2*h3-g3*h2)-(g1*h3-g3*h1)*(f2*h3-f3*h2)
+!      ayt1(jy)=h3*(g2*h3-g3*h2)/ca1
+!      byt1(jy)=h3*(h2*f3-h3*f2)/ca1
+!      cyt1(jy)=h3*(f2*g3-f3*g2)/ca1
+!      dyt1(jy)=(dyp1**2*ayt1(jy)-dym1**2*byt1(jy) &
+!         +dyp2**2*cyt1(jy))/dym2**2
+! 	enddo
 
       amxt0(1)=0.
       bmxt0(1)=-1.e15
@@ -1814,6 +2255,8 @@ module declare
 
       call perturbation
 
+!	if(rmp_east) call rmp_east_pert
+
       return
       end
 !ws**************************************************************************
@@ -1866,7 +2309,12 @@ module declare
 !       per_vp=-psi0*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dsin(nmode*yy(jy)+mmode*thxz(jx,jz))
 !       x(jx,jz,jy,3)=-per_vp*dsin(thxz(jx,jz))
 !       x(jx,jz,jy,5)=per_vp*dcos(thxz(jx,jz))
+!	psmode=0.050299150612909
       eta1(jx,jz,jy)=eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
+!	psmode=0.262538435913944
+!      eta1(jx,jz,jy)=eta1(jx,jz,jy)+eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
+!	psmode=0.494853880167460
+!      eta1(jx,jz,jy)=eta1(jx,jz,jy)+eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
 !      if(rshear) then
 !      eta1(jx,jz,jy)=eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2)+exp(-(psi(jx,jz)-ps1mode)**2/deltax**2))*((1+dcos(nmode*yy(jy)+mmode*thxz(jx,jz)))/2)**4
 !      else
@@ -2078,7 +2526,63 @@ module declare
       do 1 jz=iz_first+2,iz_last-2      
       do 1 jx=ix_first+2,ix_last-2
       if(psi(jx,jz).lt.psia1) then
+
         drvx_dx=d1fc(rvx(jx-2,jz,jy),rvx(jx-1,jz,jy),rvx(jx,jz,jy),rvx(jx+1,jz,jy),rvx(jx+2,jz,jy),ax1(jx),bx1(jx),cx1(jx),dx1(jx))
+
+!clt option for linear mhd simulation!!!!
+      if(linear_mhd) then      
+
+        xdif(jx,jz,jy,1)=-x1(jx,jz,jy,3)*xint_dx(jx,jz,1) &
+            -xint(jx,jz,1)*drvx_dx/xx(jx) &
+            -(xy(jx,jz,jy,1)*xint(jx,jz,4)+xint(jx,jz,1)*xy(jx,jz,jy,4))/xx(jx) &
+            -x1(jx,jz,jy,5)*xint_dz(jx,jz,1)-xint(jx,jz,1)*x1z(jx,jz,jy,5) &
+    !ws:for poloidal flow
+            -xint(jx,jz,3)*x1r(jx,jz,jy,1)-x1(jx,jz,jy,1)*(xint(jx,jz,3)/xx(jx)+xint_dx(jx,jz,3)) &
+            -xint(jx,jz,5)*x1z(jx,jz,jy,1)-x1(jx,jz,jy,1)*xint_dz(jx,jz,5)
+
+            xdif(jx,jz,jy,2)=-x1(jx,jz,jy,3)*xint_dx(jx,jz,2) &
+            -gamma*xint(jx,jz,2)*(drvx_dx/xx(jx)) &
+            -(xy(jx,jz,jy,2)*xint(jx,jz,4)+gamma*xint(jx,jz,2)*xy(jx,jz,jy,4))/xx(jx) &
+            -x1(jx,jz,jy,5)*xint_dz(jx,jz,2)-gamma*xint(jx,jz,2)*x1z(jx,jz,jy,5) &    
+    !ws:for poloidal flow
+            -xint(jx,jz,3)*x1r(jx,jz,jy,2)-gamma*x1(jx,jz,jy,2)*(xint(jx,jz,3)/xx(jx)+xint_dx(jx,jz,3)) &
+            -xint(jx,jz,5)*x1z(jx,jz,jy,2)-gamma*x1(jx,jz,jy,2)*xint_dz(jx,jz,5)       
+     
+             
+            xdif(jx,jz,jy,3)=-xint(jx,jz,3)*x1r(jx,jz,jy,3)-xint(jx,jz,5)*x1z(jx,jz,jy,3) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,3)/xx(jx)+xint(jx,jz,4)*x1(jx,jz,jy,4)/xx(jx) &
+            +((cur(jx,jz,jy,2))*xint(jx,jz,8)+(cint(jx,jz,2))*x1(jx,jz,jy,8) &
+            - (cur(jx,jz,jy,3))*xint(jx,jz,7)-(cint(jx,jz,3))*x1(jx,jz,jy,7) &
+            -x1r(jx,jz,jy,2))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,3)-x1(jx,jz,jy,5)*xint_dz(jx,jz,3) &
+            +x1(jx,jz,jy,4)*xint(jx,jz,4)/xx(jx) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,3)-xint(jx,jz,5)*xint_dz(jx,jz,3) &
+            +xint(jx,jz,4)*xint(jx,jz,4)/xx(jx))*x1(jx,jz,jy,1)/xint(jx,jz,1)
+
+
+            xdif(jx,jz,jy,4)=-xint(jx,jz,3)*x1r(jx,jz,jy,4)-xint(jx,jz,5)*x1z(jx,jz,jy,4) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,4)/xx(jx)-xint(jx,jz,4)*x1(jx,jz,jy,3)/xx(jx) &
+            +((cur(jx,jz,jy,3))*xint(jx,jz,6)+(cint(jx,jz,3))*x1(jx,jz,jy,6) &
+            - (cur(jx,jz,jy,1))*xint(jx,jz,8)-(cint(jx,jz,1))*x1(jx,jz,jy,8) &   
+            -xy(jx,jz,jy,2)/xx(jx))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,4)-x1(jx,jz,jy,5)*xint_dz(jx,jz,4) &
+            -x1(jx,jz,jy,4)*xint(jx,jz,3)/xx(jx) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,4)-xint(jx,jz,5)*xint_dz(jx,jz,4) &
+            -xint(jx,jz,4)*xint(jx,jz,3)/xx(jx))*x1(jx,jz,jy,1)/xint(jx,jz,1)
+     
+       
+            xdif(jx,jz,jy,5)=-xint(jx,jz,3)*x1r(jx,jz,jy,5)-xint(jx,jz,5)*x1z(jx,jz,jy,5) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,5)/xx(jx) &     
+            +((cur(jx,jz,jy,1))*xint(jx,jz,7)+(cint(jx,jz,1))*x1(jx,jz,jy,7) &
+            - (cur(jx,jz,jy,2))*xint(jx,jz,6)-(cint(jx,jz,2))*x1(jx,jz,jy,6) & 
+            -x1z(jx,jz,jy,2))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,5)-x1(jx,jz,jy,5)*xint_dz(jx,jz,5) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,5)-xint(jx,jz,5)*xint_dz(jx,jz,5)) &
+            *x1(jx,jz,jy,1)/xint(jx,jz,1)
+
+
+	else
+
       xdif(jx,jz,jy,1)=-x1(jx,jz,jy,3)*xr(jx,jz,jy,1) &
        -x(jx,jz,jy,1)*drvx_dx/xx(jx) &
 !rplc       -x(jx,jz,jy,3)*x(jx,jz,jy,1)/xx(jx)-x(jx,jz,jy,1)*xr(jx,jz,jy,3) &
@@ -2159,6 +2663,8 @@ module declare
        -x1(jx,jz,jy,3)*xint_dx(jx,jz,5)-x1(jx,jz,jy,5)*xint_dz(jx,jz,5) &
        +(-xint(jx,jz,3)*xint_dx(jx,jz,5)-xint(jx,jz,5)*xint_dz(jx,jz,5)) &
        *x1(jx,jz,jy,1)/x(jx,jz,jy,1)
+
+	endif
           
      
 !      xdif(jx,jz,jy,6)=-x(jx,jz,jy,3)*xr(jx,jz,jy,6)-x(jx,jz,jy,6)*x(jx,jz,jy,3)/xx(jx) &
@@ -3210,9 +3716,19 @@ module declare
 !      ef(jx,jz,jy,2)=-x(jx,jz,jy,5)*x(jx,jz,jy,6)+x(jx,jz,jy,3)*x(jx,jz,jy,8)+eta(jx,jz,jy)*cur(jx,jz,jy,2)+xint(jx,jz,5)*xint(jx,jz,6)-xint(jx,jz,3)*xint(jx,jz,8)
 !      ef(jx,jz,jy,3)=-x(jx,jz,jy,3)*x(jx,jz,jy,7)+x(jx,jz,jy,4)*x(jx,jz,jy,6)+eta(jx,jz,jy)*cur(jx,jz,jy,3)+xint(jx,jz,3)*xint(jx,jz,7)-xint(jx,jz,4)*xint(jx,jz,6)
 
+      if(linear_mhd) then
+
+          ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*xint(jx,jz,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*xint(jx,jz,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
+          ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*xint(jx,jz,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*xint(jx,jz,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
+          ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*xint(jx,jz,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*xint(jx,jz,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+
+	else
+
       ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*x(jx,jz,jy,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*x(jx,jz,jy,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
       ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*x(jx,jz,jy,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*x(jx,jz,jy,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
       ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*x(jx,jz,jy,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*x(jx,jz,jy,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+
+	endif
 !      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+eta1(jx,jz,jy)*cint(jx,jz,1)
 !      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+eta1(jx,jz,jy)*cint(jx,jz,2)
 !      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+eta1(jx,jz,jy)*cint(jx,jz,3)
@@ -3224,9 +3740,19 @@ module declare
       do 12 jz=iz_first+2,iz_last-2
       do 12 jx=ix_first+2,ix_last-2
 
+      if(linear_mhd) then
+
+      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x1(jx,jz,jy,8)-cur(jx,jz,jy,3)*x1(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
+      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x1(jx,jz,jy,6)-cur(jx,jz,jy,1)*x1(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
+      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x1(jx,jz,jy,7)-cur(jx,jz,jy,2)*x1(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
+
+	else
+
       ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x(jx,jz,jy,8)-cur(jx,jz,jy,3)*x(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
       ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x(jx,jz,jy,6)-cur(jx,jz,jy,1)*x(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
       ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x(jx,jz,jy,7)-cur(jx,jz,jy,2)*x(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
+
+	endif
       
 12     continue
        endif
@@ -3938,12 +4464,16 @@ module declare
       do 2 jy=iy_first,iy_last
       do 2 jz=iz_first,iz_last
       do 2 jx=ix_first,ix_last
+      if(psi(jx,jz).lt.psia) then
  !     w(jx,jz,jy)=x(jx,jz,jy,6)**2*xx(jx)/2.
       xh(jx,jz,jy,1)=0.5*(x(jx,jz,jy,6)**2+x(jx,jz,jy,7)**2 &
                    +x(jx,jz,jy,8)**2)*xx(jx)
       xh(jx,jz,jy,2)=0.5*(x(jx,jz,jy,3)**2+x(jx,jz,jy,4)**2 &
                    +x(jx,jz,jy,5)**2)*x(jx,jz,jy,1)*xx(jx)
       xh(jx,jz,jy,3)=x(jx,jz,jy,2)/(gamma-1.)*xx(jx)
+      else
+      xh(jx,jz,jy,:)=0.d0
+      endif
     2 continue
     
       
@@ -5753,10 +6283,12 @@ module declare
       zmin=-zmax/aa
 	
 
+	if(use_stepon_cut_cell) then
 	xmin=xmin-(xmax-xmin)/mxt
 	xmax=xmax+(xmax-xmin)/mxt
 	zmin=zmin-(zmax-zmin)/mzt
 	zmax=zmax+(zmax-zmin)/mzt
+	endif
 
       zmg=0.0
       cip=curnorm*xzero*b0
@@ -6888,6 +7420,49 @@ module declare
       return
       end
 !
+!hw************************************************************************
+      subroutine recrd_rmp_vacuum
+      use declare
+      include 'mpif.h'
+!
+      character*9 output
+      character*3 cn
+      character*3 cn1
+
+	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp(:,:,:,1:3)
+      
+      output='tk'//cn1(nrank)//cn(0)
+      open(unit=7,file=output,status='unknown',form='unformatted')
+      write(7)ncase,nstep,time
+      write(7)x
+      close(7)
+
+	x(:,:,:,6:8)=x(:,:,:,6:8)-b_rmp(:,:,:,1:3)
+    
+      return
+      end
+!hw************************************************************************
+      subroutine recrd_rmp_vacuum_2
+      use declare
+      include 'mpif.h'
+!
+      character*9 output
+      character*3 cn
+      character*3 cn1
+
+	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp_out(:,:,:,1:3)
+      
+      output='tk'//cn1(nrank)//cn(1)
+      open(unit=7,file=output,status='unknown',form='unformatted')
+      write(7)ncase,nstep,time
+      write(7)x
+      close(7)
+
+	x(:,:,:,6:8)=x(:,:,:,6:8)-b_rmp_out(:,:,:,1:3)
+    
+      return
+      end
+
      subroutine recrd_init
       use declare
       include 'mpif.h'
@@ -13734,7 +14309,7 @@ end
 
       if(nrank.eq.0) then
       write(111,1000)time,wsmax1(:)
-      write(112,1000)time,wsmax1(:)
+      write(112,1000)time,wsmin1(:)
 
 1000  format(14(1x,e12.5))
 
@@ -17266,7 +17841,8 @@ end
       do jy=iy_first,iy_last
       do jz=iz_first,iz_last
       do jx=ix_first,ix_last
-      if(psi(jx,jz) .lt. psia) then
+!      if(psi(jx,jz) .lt. psia) then
+      if(gdtp_ep(jx,jz,1).ne.4) then
       tm(jx,jz,jy)=x(jx,jz,jy,2)/x(jx,jz,jy,1)
       eta(jx,jz,jy)=eta0*(1.0+(etacut-1.0)*tanh(((tm(jx,jz,jy)/tm00)**(-1.5)-1.0)/(etacut-1.0)))
       endif
@@ -17277,7 +17853,8 @@ end
       do jy=iy_first+2,iy_last-2  
       do jz=iz_first+2,iz_last-2
       do jx=ix_first+2,ix_last-2 
-      if(psi(jx,jz) .lt. psia) then         
+!      if(psi(jx,jz) .lt. psia) then         
+      if(gdtp_ep(jx,jz,1).ne.4) then
       etax(jx,jz,jy)=d1fc(eta(jx-2,jz,jy),eta(jx-1,jz,jy),eta(jx,jz,jy) &
          ,eta(jx+1,jz,jy),eta(jx+2,jz,jy),ax1(jx),bx1(jx),cx1(jx),dx1(jx))
       etaz(jx,jz,jy)=d1fc(eta(jx,jz-2,jy),eta(jx,jz-1,jy),eta(jx,jz,jy) &
@@ -20767,6 +21344,319 @@ end
 	return
 	end
 	
+!hw**************************************************************
+
+	subroutine map_int_to_bnd_grd
+	use declare
+      integer, parameter :: nq = 33
+!      integer, parameter :: nr = 150 !int( sqrt(ndat/3) )
+      integer, parameter :: nr = int( sqrt(ndata*1./3.) )
+      integer, parameter :: nw = 39
+    !
+      integer lcell(nr,nr)
+      integer lnext(ndata),lnext12(ndat12),lnext34(ndat34)
+      real*8 risq(ndata),risq12(ndat12),risq34(ndat34)
+      real*8 aw(5,ndata),aw12(5,ndat12),aw34(5,ndat34)
+      real*8 rimax,ximin,zimin,dxi,dzi
+!      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
+!      real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
+!	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+!      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
+!      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
+!      integer icell(1,1)
+!      integer inext(9)
+!      real*8 xin(9),zin(9),qin(9),rinsq(9),ain(5,9)
+!       real*8 xout,zout,qout,qdxout,qdzout
+       integer iam,iap, itag
+	 integer ier
+
+	 real*8, dimension(ndata) :: tmp_int, xx_int, zz_int
+	 real*8, dimension(nbndx) :: tmp_bndx_out1, tmp_bndx_out2, tmp_bndx_out3
+	 real*8, dimension(nbndz) :: tmp_bndz_out1, tmp_bndz_out2, tmp_bndz_out3
+	 real*8, dimension(mxt,mzt) :: xxt2d, zzt2d
+      include 'mpif.h'
+!  d1fc= d f / dx  with fourth-order accuracy central difference
+      d1fc(fm2,fm1,f0,fp1,fp2,a,b,c,d)= &
+       a*(fp1-f0)+b*(f0-fm1)+c*(fp2-f0)+d*(f0-fm2)   
+!-----------------------------------------------------------
+! allocate the bndgrds
+	allocate(bndx_grd(nbndx,n7))
+	allocate(bndz_grd(nbndz,n7))
+	bndx_grd(:,:)=bnd_x(1:nbndx,:)
+	bndz_grd(:,:)=bnd_z(1:nbndz,:)
+
+	allocate(bx_bndx(nbndx))
+	allocate(bx_bndz(nbndz))	
+	allocate(bz_bndx(nbndx))
+	allocate(bz_bndz(nbndz))
+	allocate(bxdx_bndx(nbndx))
+	allocate(bxdx_bndz(nbndz))
+	allocate(bxdz_bndx(nbndx))
+	allocate(bxdz_bndz(nbndz))
+	allocate(bzdx_bndx(nbndx))
+	allocate(bzdx_bndz(nbndz))
+	allocate(bzdz_bndx(nbndx))
+	allocate(bzdz_bndz(nbndz))
+	allocate(by_bndx(nbndx))
+	allocate(by_bndz(nbndz))
+	allocate(bydx_bndx(nbndx))
+	allocate(bydx_bndz(nbndz))
+	allocate(bydz_bndx(nbndx))
+	allocate(bydz_bndz(nbndz))
+	allocate(pdx_bndx(nbndx))
+	allocate(pdx_bndz(nbndz))
+	allocate(pdz_bndx(nbndx))
+	allocate(pdz_bndz(nbndz))
+	allocate(cy_bndx(nbndx))
+	allocate(cy_bndz(nbndz))
+	allocate(cx_bndx(nbndx))
+	allocate(cx_bndz(nbndz))
+	allocate(cz_bndx(nbndx))
+	allocate(cz_bndz(nbndz))
+	allocate(uy_bndx(nbndx))
+	allocate(uy_bndz(nbndz))
+	allocate(uydx_bndx(nbndx))
+	allocate(uydx_bndz(nbndz))
+	allocate(uydz_bndx(nbndx))
+	allocate(uydz_bndz(nbndz))
+	allocate(pt_bndx(nbndx))
+	allocate(pt_bndz(nbndz))
+	allocate(ptdx_bndx(nbndx))
+	allocate(ptdx_bndz(nbndz))
+	allocate(ptdz_bndx(nbndx))
+	allocate(ptdz_bndz(nbndz))
+	allocate(rh_bndx(nbndx))
+	allocate(rh_bndz(nbndz))
+	allocate(rhdx_bndx(nbndx))
+	allocate(rhdx_bndz(nbndz))
+	allocate(rhdz_bndx(nbndx))
+	allocate(rhdz_bndz(nbndz))
+
+	allocate(x_8bndx(nbndx,my,8))
+	allocate(x_8bndz(nbndz,my,8))
+	allocate(x1_8bndx(nbndx,my,8))
+	allocate(x1_8bndz(nbndz,my,8))
+	allocate(xint_8bndx(nbndx,8))
+	allocate(xint_8bndz(nbndz,8))
+	allocate(cur_3bndx(nbndx,my,3))
+	allocate(cur_3bndz(nbndz,my,3))
+	allocate(cint_3bndx(nbndx,3))
+	allocate(cint_3bndz(nbndz,3))
+	allocate(ef_3bndx(nbndx,my,3))
+	allocate(ef_3bndz(nbndz,my,3))
+
+	allocate(updated_bndx(nbndx))
+	allocate(updated_bndz(nbndz))
+
+	allocate(xy_8bndx(nbndx,my,8))
+	allocate(xy2_8bndx(nbndx,my,8))
+	allocate(xy_8bndz(nbndz,my,8))
+	allocate(xy2_8bndz(nbndz,my,8))
+! interpolation, input ndata, xx_int, zz_int, f_int, 
+! output f(jx,jz), and its x & z directional derivatives at xxt and zzt grids.
+	if(firstmap) then
+
+	do jx=1,mxt
+	do jz=1,mzt
+	xxt2d(jx,jz)=xxt(jx)
+	zzt2d(jx,jz)=zzt(jz)
+	enddo
+	enddo
+
+	xx_int=reshape(xxt2d, [ndata])
+	zz_int=reshape(zzt2d, [ndata])
+
+	do itag=1,23
+
+	select case(itag)
+	case(1)
+		  tmp_int(:)=reshape(bx, [ndata])
+	case(2)
+		  tmp_int(:)=reshape(bz, [ndata])
+	case(3)
+		  tmp_int(:)=reshape(bxdx, [ndata])
+	case(4)
+		  tmp_int(:)=reshape(bxdz, [ndata])
+	case(5)
+		  tmp_int(:)=reshape(bzdx, [ndata])
+	case(6)
+		  tmp_int(:)=reshape(bzdz, [ndata])
+	case(7)
+		  tmp_int(:)=reshape(by, [ndata])
+	case(8)
+		  tmp_int(:)=reshape(bydx, [ndata])
+	case(9)
+		  tmp_int(:)=reshape(bydz, [ndata])
+	case(10)
+		  tmp_int(:)=reshape(ptdx, [ndata])
+	case(11)
+		  tmp_int(:)=reshape(ptdz, [ndata])
+	case(12)
+		  tmp_int(:)=reshape(cy, [ndata])
+	case(13)
+		  tmp_int(:)=reshape(cx, [ndata])
+	case(14)
+		  tmp_int(:)=reshape(cz, [ndata])
+	case(15)
+		  tmp_int(:)=reshape(uy, [ndata])
+	case(16)
+		  tmp_int(:)=reshape(uydx, [ndata])
+	case(17)
+		  tmp_int(:)=reshape(uydz, [ndata])
+	case(18)
+		  tmp_int(:)=reshape(pt, [ndata])
+	case(19)
+		  tmp_int(:)=reshape(ptdx, [ndata])
+	case(20)
+		  tmp_int(:)=reshape(ptdz, [ndata])
+	case(21)
+		  tmp_int(:)=reshape(rh, [ndata])
+	case(22)
+		  tmp_int(:)=reshape(rhdx, [ndata])
+	case(23)
+		  tmp_int(:)=reshape(rhdz, [ndata])
+	end select
+
+      call qshep2 ( ndata, xx_int, zz_int, tmp_int, nq, nw, nr, lcell, lnext, ximin, zimin, &
+        dxi, dzi, rimax, risq, aw, ier )
+      do jx=1,nbndx
+      call qs2grd ( bndx_grd(jx,1), bndx_grd(jx,2), ndata, xx_int, zz_int, tmp_int, nr, lcell, lnext, ximin, &
+        zimin, dxi, dzi, rimax, risq, aw, tmp_bndx_out1(jx), tmp_bndx_out2(jx), tmp_bndx_out3(jx), ier )
+      write(*,*) 'itag=', itag, 'jx=', jx, ier
+      enddo
+      do jz=1,nbndz
+      call qs2grd ( bndz_grd(jz,1), bndz_grd(jz,2), ndata, xx_int, zz_int, tmp_int, nr, lcell, lnext, ximin, &
+        zimin, dxi, dzi, rimax, risq, aw, tmp_bndz_out1(jz), tmp_bndz_out2(jz), tmp_bndz_out3(jz), ier )
+      write(*,*) 'itag=', itag, 'jz=', jz, ier
+      enddo
+
+	select case(itag)
+	case(1)
+		  bx_bndx(:)=tmp_bndx_out1(:)
+		  bx_bndz(:)=tmp_bndz_out1(:)
+	case(2)
+		  bz_bndx(:)=tmp_bndx_out1(:)
+		  bz_bndz(:)=tmp_bndz_out1(:)
+	case(3)
+		  bxdx_bndx(:)=tmp_bndx_out1(:)
+		  bxdx_bndz(:)=tmp_bndz_out1(:)
+	case(4)
+		  bxdz_bndx(:)=tmp_bndx_out1(:)
+		  bxdz_bndz(:)=tmp_bndz_out1(:)
+	case(5)
+		  bzdx_bndx(:)=tmp_bndx_out1(:)
+		  bzdx_bndz(:)=tmp_bndz_out1(:)
+	case(6)
+		  bzdz_bndx(:)=tmp_bndx_out1(:)
+		  bzdz_bndz(:)=tmp_bndz_out1(:)
+	case(7)
+		  by_bndx(:)=tmp_bndx_out1(:)
+		  by_bndz(:)=tmp_bndz_out1(:)
+	case(8)
+		  bydx_bndx(:)=tmp_bndx_out1(:)
+		  bydx_bndz(:)=tmp_bndz_out1(:)
+	case(9)
+		  bydz_bndx(:)=tmp_bndx_out1(:)
+		  bydz_bndz(:)=tmp_bndz_out1(:)
+	case(10)
+		  pdx_bndx(:)=tmp_bndx_out1(:)
+		  pdx_bndz(:)=tmp_bndz_out1(:)
+	case(11)
+		  pdz_bndx(:)=tmp_bndx_out1(:)
+		  pdz_bndz(:)=tmp_bndz_out1(:)
+	case(12)
+		  cy_bndx(:)=tmp_bndx_out1(:)
+		  cy_bndz(:)=tmp_bndz_out1(:)
+	case(13)
+		  cx_bndx(:)=tmp_bndx_out1(:)
+		  cx_bndz(:)=tmp_bndz_out1(:)
+	case(14)
+		  cz_bndx(:)=tmp_bndx_out1(:)
+		  cz_bndz(:)=tmp_bndz_out1(:)
+	case(15)
+		  uy_bndx(:)=tmp_bndx_out1(:)
+		  uy_bndz(:)=tmp_bndz_out1(:)
+	case(16)
+		  uydx_bndx(:)=tmp_bndx_out1(:)
+		  uydx_bndz(:)=tmp_bndz_out1(:)
+	case(17)
+		  uydz_bndx(:)=tmp_bndx_out1(:)
+		  uydz_bndz(:)=tmp_bndz_out1(:)
+	case(18)
+		  pt_bndx(:)=tmp_bndx_out1(:)
+		  pt_bndz(:)=tmp_bndz_out1(:)
+	case(19)
+		  ptdx_bndx(:)=tmp_bndx_out1(:)
+		  ptdx_bndz(:)=tmp_bndz_out1(:)
+	case(20)
+		  ptdz_bndx(:)=tmp_bndx_out1(:)
+		  ptdz_bndz(:)=tmp_bndz_out1(:)
+	case(21)
+		  rh_bndx(:)=tmp_bndx_out1(:)
+		  rh_bndz(:)=tmp_bndz_out1(:)
+	case(22)
+		  rhdx_bndx(:)=tmp_bndx_out1(:)
+		  rhdx_bndz(:)=tmp_bndz_out1(:)
+	case(23)
+		  rhdz_bndx(:)=tmp_bndx_out1(:)
+		  rhdz_bndz(:)=tmp_bndz_out1(:)
+	end select
+
+	enddo
+
+	xint_8bndx(:,1)=rh_bndx(:)
+	xint_8bndx(:,2)=pt_bndx(:)
+	xint_8bndx(:,3)=0.d0
+	xint_8bndx(:,4)=uy_bndx(:)
+	xint_8bndx(:,5)=0.d0
+	xint_8bndx(:,6)=bx_bndx(:)
+	xint_8bndx(:,7)=by_bndx(:)
+	xint_8bndx(:,8)=bz_bndx(:)
+	cint_3bndx(:,1)=cx_bndx(:)
+	cint_3bndx(:,2)=cy_bndx(:)
+	cint_3bndx(:,3)=cz_bndx(:)
+
+
+	xint_8bndz(:,1)=rh_bndz(:)
+	xint_8bndz(:,2)=pt_bndz(:)
+	xint_8bndz(:,3)=0.d0
+	xint_8bndz(:,4)=uy_bndz(:)
+	xint_8bndz(:,5)=0.d0
+	xint_8bndz(:,6)=bx_bndz(:)
+	xint_8bndz(:,7)=by_bndz(:)
+	xint_8bndz(:,8)=bz_bndz(:)
+	cint_3bndz(:,1)=cx_bndz(:)
+	cint_3bndz(:,2)=cy_bndz(:)
+	cint_3bndz(:,3)=cz_bndz(:)
+
+
+	do jy=iy_first,iy_last
+	x_8bndx(:,jy,:)=xint_8bndx(:,:)
+	cur_3bndx(:,jy,:)=0.d0
+	x1_8bndx(:,jy,:)=0.d0
+	ef_3bndx(:,jy,:)=0.d0
+
+	x_8bndz(:,jy,:)=xint_8bndz(:,:)
+	cur_3bndz(:,jy,:)=0.d0
+	x1_8bndz(:,jy,:)=0.d0
+	ef_3bndz(:,jy,:)=0.d0
+
+	enddo
+
+
+	if(nrank.eq.0) then
+	open(unit=1,file='bx_bndz.dat',status='unknown',form='formatted')
+	write(1,2) ((bndz_grd(jx,1),bndz_grd(jx,2),bx_bndz(jx)),jx=1,nbndz)
+    2 format(3(1x,e12.5))
+    	close(1)
+	endif
+
+
+	else
+	endif
+
+	return
+	end
 
 !hw**************************************************************
 	subroutine decide_grd_type_in_each_proc
@@ -21640,6 +22530,61 @@ end subroutine uptri
 	endif
 
 
+!clt option for linear mhd simulation!!!!
+      if(linear_mhd) then      
+
+        xdif(jx,jz,jy,1)=-x1(jx,jz,jy,3)*xint_dx(jx,jz,1) &
+            -xint(jx,jz,1)*drvx_dx/xx(jx) &
+            -(xy(jx,jz,jy,1)*xint(jx,jz,4)+xint(jx,jz,1)*xy(jx,jz,jy,4))/xx(jx) &
+            -x1(jx,jz,jy,5)*xint_dz(jx,jz,1)-xint(jx,jz,1)*x1z(jx,jz,jy,5) &
+    !ws:for poloidal flow
+            -xint(jx,jz,3)*x1r(jx,jz,jy,1)-x1(jx,jz,jy,1)*(xint(jx,jz,3)/xx(jx)+xint_dx(jx,jz,3)) &
+            -xint(jx,jz,5)*x1z(jx,jz,jy,1)-x1(jx,jz,jy,1)*xint_dz(jx,jz,5)
+
+            xdif(jx,jz,jy,2)=-x1(jx,jz,jy,3)*xint_dx(jx,jz,2) &
+            -gamma*xint(jx,jz,2)*(drvx_dx/xx(jx)) &
+            -(xy(jx,jz,jy,2)*xint(jx,jz,4)+gamma*xint(jx,jz,2)*xy(jx,jz,jy,4))/xx(jx) &
+            -x1(jx,jz,jy,5)*xint_dz(jx,jz,2)-gamma*xint(jx,jz,2)*x1z(jx,jz,jy,5) &    
+    !ws:for poloidal flow
+            -xint(jx,jz,3)*x1r(jx,jz,jy,2)-gamma*x1(jx,jz,jy,2)*(xint(jx,jz,3)/xx(jx)+xint_dx(jx,jz,3)) &
+            -xint(jx,jz,5)*x1z(jx,jz,jy,2)-gamma*x1(jx,jz,jy,2)*xint_dz(jx,jz,5)       
+     
+             
+            xdif(jx,jz,jy,3)=-xint(jx,jz,3)*x1r(jx,jz,jy,3)-xint(jx,jz,5)*x1z(jx,jz,jy,3) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,3)/xx(jx)+xint(jx,jz,4)*x1(jx,jz,jy,4)/xx(jx) &
+            +((cur(jx,jz,jy,2))*xint(jx,jz,8)+(cint(jx,jz,2))*x1(jx,jz,jy,8) &
+            - (cur(jx,jz,jy,3))*xint(jx,jz,7)-(cint(jx,jz,3))*x1(jx,jz,jy,7) &
+            -x1r(jx,jz,jy,2))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,3)-x1(jx,jz,jy,5)*xint_dz(jx,jz,3) &
+            +x1(jx,jz,jy,4)*xint(jx,jz,4)/xx(jx) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,3)-xint(jx,jz,5)*xint_dz(jx,jz,3) &
+            +xint(jx,jz,4)*xint(jx,jz,4)/xx(jx))*x1(jx,jz,jy,1)/xint(jx,jz,1)
+
+
+            xdif(jx,jz,jy,4)=-xint(jx,jz,3)*x1r(jx,jz,jy,4)-xint(jx,jz,5)*x1z(jx,jz,jy,4) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,4)/xx(jx)-xint(jx,jz,4)*x1(jx,jz,jy,3)/xx(jx) &
+            +((cur(jx,jz,jy,3))*xint(jx,jz,6)+(cint(jx,jz,3))*x1(jx,jz,jy,6) &
+            - (cur(jx,jz,jy,1))*xint(jx,jz,8)-(cint(jx,jz,1))*x1(jx,jz,jy,8) &   
+            -xy(jx,jz,jy,2)/xx(jx))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,4)-x1(jx,jz,jy,5)*xint_dz(jx,jz,4) &
+            -x1(jx,jz,jy,4)*xint(jx,jz,3)/xx(jx) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,4)-xint(jx,jz,5)*xint_dz(jx,jz,4) &
+            -xint(jx,jz,4)*xint(jx,jz,3)/xx(jx))*x1(jx,jz,jy,1)/xint(jx,jz,1)
+     
+       
+            xdif(jx,jz,jy,5)=-xint(jx,jz,3)*x1r(jx,jz,jy,5)-xint(jx,jz,5)*x1z(jx,jz,jy,5) &
+            -xint(jx,jz,4)*xy(jx,jz,jy,5)/xx(jx) &     
+            +((cur(jx,jz,jy,1))*xint(jx,jz,7)+(cint(jx,jz,1))*x1(jx,jz,jy,7) &
+            - (cur(jx,jz,jy,2))*xint(jx,jz,6)-(cint(jx,jz,2))*x1(jx,jz,jy,6) & 
+            -x1z(jx,jz,jy,2))/xint(jx,jz,1) &
+            -x1(jx,jz,jy,3)*xint_dx(jx,jz,5)-x1(jx,jz,jy,5)*xint_dz(jx,jz,5) &
+            +(-xint(jx,jz,3)*xint_dx(jx,jz,5)-xint(jx,jz,5)*xint_dz(jx,jz,5)) &
+            *x1(jx,jz,jy,1)/xint(jx,jz,1)
+
+
+	else
+
+
       xdif(jx,jz,jy,1)=-x1(jx,jz,jy,3)*xr(jx,jz,jy,1) &
        -x(jx,jz,jy,1)*drvx_dx/xx(jx) &
 !rplc       -x(jx,jz,jy,3)*x(jx,jz,jy,1)/xx(jx)-x(jx,jz,jy,1)*xr(jx,jz,jy,3) &
@@ -21721,6 +22666,7 @@ end subroutine uptri
        +(-xint(jx,jz,3)*xint_dx(jx,jz,5)-xint(jx,jz,5)*xint_dz(jx,jz,5)) &
        *x1(jx,jz,jy,1)/x(jx,jz,jy,1)
           
+	endif
      
 !      xdif(jx,jz,jy,6)=-x(jx,jz,jy,3)*xr(jx,jz,jy,6)-x(jx,jz,jy,6)*x(jx,jz,jy,3)/xx(jx) &
 !       -(x(jx,jz,jy,4)*xy(jx,jz,jy,6)-x(jx,jz,jy,7)*xy(jx,jz,jy,3)+x(jx,jz,jy,6)*xy(jx,jz,jy,4))/xx(jx) &
@@ -22669,7 +23615,7 @@ end subroutine uptri
   17 continue
     else if((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz,4).ne.5).and.(gdtp_ep(jx,jz+1,2).eq.-1)) then ! jz is the inside dropped point
 
-    do 18 m=1,8
+    do 18 m=1,5
     do 18 jy=1,my
     call interp1d2l(x1(jx,jz+2,jy,m),x1(jx,jz+1,jy,m),x1_8bndx(itag,jy,m), &
             zz(jz+2),zz(jz+1),bndx_grd(itag,2),zz(jz),x1(jx,jz,jy,m))
@@ -22722,17 +23668,87 @@ end subroutine uptri
       use declare
 	implicit none
       integer ibnd, itag
+	! if true, use the jxjz_list in boundary interpolation
+	logical, parameter :: use_jxjz_list=.true. 
       include 'mpif.h'
 
       do 1 jy=1,my
+	if(rmp_east) then
+      x1(:,:,jy,1:5)=x(:,:,jy,1:5)-xint(:,:,1:5)
+	x1(:,:,jy,6:8)=x(:,:,jy,6:8)-xint(:,:,6:8)-b_rmp_out(:,:,jy,1:3)*ft_rmp(2)
+	x1_8bndx(:,jy,1:5)=x_8bndx(:,jy,1:5)-xint_8bndx(:,1:5)
+	x1_8bndx(:,jy,6:8)=x_8bndx(:,jy,6:8)-xint_8bndx(:,6:8)-b_rmp_bndx(:,jy,1:3)*ft_rmp(2)
+	x1_8bndz(:,jy,1:5)=x_8bndz(:,jy,1:5)-xint_8bndz(:,1:5)
+	x1_8bndz(:,jy,6:8)=x_8bndz(:,jy,6:8)-xint_8bndz(:,6:8)-b_rmp_bndz(:,jy,1:3)*ft_rmp(2)
+	else
       x1(:,:,jy,:)=x(:,:,jy,:)-xint(:,:,:)
 	x1_8bndx(:,jy,:)=x_8bndx(:,jy,:)-xint_8bndx(:,:)
 	x1_8bndz(:,jy,:)=x_8bndz(:,jy,:)-xint_8bndz(:,:)
+	endif
    1  continue
 
       call mpi_transfersm(x1(:,:,:,:),8) 
 
-	do 3 jz=iz_first,iz_last
+
+	if(nstep.eq.0) then ! fixed boundary
+	x1_8bndx=0.d0
+	x1_8bndz=0.d0
+	endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! if true, use the jxjz_list in boundary interpolation
+	if(use_jxjz_list) then
+
+    do m=1,8
+    do jy=iy_first,iy_last
+!
+    do ibnd=1,size(jxjz_list1_bndry,dim=1)
+	jx=jxjz_list1_bndry(ibnd,1)
+	jz=jxjz_list1_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,6)
+
+    call interp1d2l(x1(jx-2,jz,jy,m),x1(jx-1,jz,jy,m),x1_8bndz(itag,jy,m), &
+!    call interp1d2l(x1(jx-2,jz,jy,m),x1(jx-1,jz,jy,m),0.d0, &
+            xx(jx-2),xx(jx-1),bndz_grd(itag,1),xx(jx),x1(jx,jz,jy,m))
+    enddo
+!
+    do ibnd=1,size(jxjz_list2_bndry,dim=1)
+	jx=jxjz_list2_bndry(ibnd,1)
+	jz=jxjz_list2_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,6)
+
+    call interp1d2l(x1(jx+2,jz,jy,m),x1(jx+1,jz,jy,m),x1_8bndz(itag,jy,m), &
+!    call interp1d2l(x1(jx+2,jz,jy,m),x1(jx+1,jz,jy,m),0.d0, &
+            xx(jx+2),xx(jx+1),bndz_grd(itag,1),xx(jx),x1(jx,jz,jy,m))
+    enddo
+!		
+    do ibnd=1,size(jxjz_list3_bndry,dim=1)
+	jx=jxjz_list3_bndry(ibnd,1)
+	jz=jxjz_list3_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,3)
+
+    call interp1d2l(x1(jx,jz-2,jy,m),x1(jx,jz-1,jy,m),x1_8bndx(itag,jy,m), &
+!    call interp1d2l(x1(jx,jz-2,jy,m),x1(jx,jz-1,jy,m),0.d0, &
+            zz(jz-2),zz(jz-1),bndx_grd(itag,2),zz(jz),x1(jx,jz,jy,m))
+    enddo
+!		
+    do ibnd=1,size(jxjz_list4_bndry,dim=1)
+	jx=jxjz_list4_bndry(ibnd,1)
+	jz=jxjz_list4_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,3)
+
+    call interp1d2l(x1(jx,jz+2,jy,m),x1(jx,jz+1,jy,m),x1_8bndx(itag,jy,m), &
+!    call interp1d2l(x1(jx,jz+2,jy,m),x1(jx,jz+1,jy,m),0.d0, &
+            zz(jz+2),zz(jz+1),bndx_grd(itag,2),zz(jz),x1(jx,jz,jy,m))
+    enddo
+    enddo
+    enddo
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	else
+
+    do 3 jz=iz_first,iz_last
     do 3 jx=ix_first,ix_last
     itag=gdtp_ep(jx,jz,6)
     if((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz,4).eq.5)) x1(jx,jz,:,:)=0.d0
@@ -22781,22 +23797,27 @@ end subroutine uptri
 
     3 continue
 
+
+	endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
  !     if(smoothx1) then 
  !     do m=1,8    
  !      call smthxzy(x1(:,:,:,m),1)
  !     enddo
  !     endif
 
-!	do 10 m=1,8
-!      do 10 jy=1,my
-!      do 10 jz=iz_first,iz_last
-!      do 10 jx=ix_first,ix_last
+	do 10 m=3,5 ! fix the m component at the boundary in the x1
+      do 10 jy=1,my
+      do 10 jz=iz_first,iz_last
+      do 10 jx=ix_first,ix_last
 !      if(psi(jx,jz).lt.psia1) then
 !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
-!	x1(jx,jz,jy,m)=x1(jx,jz,jy,m)*hypb_ratio(jx,jz)
+	x1(jx,jz,jy,m)=x1(jx,jz,jy,m)*hypb_ratio(jx,jz)
 !	endif
 !	endif
-!   10 continue
+   10 continue
 
 !      call mpi_transfersm(x1(:,:,:,:),8) 
 
@@ -22805,18 +23826,107 @@ end subroutine uptri
 
 !	call smth_irpt_with_difc(2,1,1,8,0.85d0)
 !	call smth_irpt_with_difc_v2(2,1,1,8,0.85d0)
-	call smth_irpt_with_difc_v3(2,1,1,8,0.85d0)
+!	call smth_irpt_with_difc_v3(2,1,1,8,0.85d0) !open if necessary ! smooth all
+	call smth_irpt_with_difc_v3(2,1,1,2,0.85d0) !open if necessary ! smooth the rho and p
 
       do 19 jy=1,my
+	if(rmp_east) then
+      x(:,:,jy,1:5)=x1(:,:,jy,1:5)+xint(:,:,1:5)
+	x(:,:,jy,6:8)=x1(:,:,jy,6:8)+xint(:,:,6:8)+b_rmp_out(:,:,jy,1:3)*ft_rmp(2)
+	x_8bndx(:,jy,1:5)=x1_8bndx(:,jy,1:5)+xint_8bndx(:,1:5)
+	x_8bndx(:,jy,6:8)=x1_8bndx(:,jy,6:8)+xint_8bndx(:,6:8)+b_rmp_bndx(:,jy,1:3)*ft_rmp(2)
+	x_8bndz(:,jy,1:5)=x1_8bndz(:,jy,1:5)+xint_8bndz(:,1:5)
+	x_8bndz(:,jy,6:8)=x1_8bndz(:,jy,6:8)+xint_8bndz(:,6:8)+b_rmp_bndz(:,jy,1:3)*ft_rmp(2)
+
+	x1(:,:,jy,6:8)=x1(:,:,jy,6:8)+b_rmp_out(:,:,jy,1:3)*ft_rmp(2)
+	x1_8bndx(:,jy,6:8)=x1_8bndx(:,jy,6:8)+b_rmp_bndx(:,jy,1:3)*ft_rmp(2)
+	x1_8bndz(:,jy,6:8)=x1_8bndz(:,jy,6:8)+b_rmp_bndz(:,jy,1:3)*ft_rmp(2)
+	else
       x(:,:,jy,:)=x1(:,:,jy,:)+xint(:,:,:)
 	x_8bndx(:,jy,:)=x1_8bndx(:,jy,:)+xint_8bndx(:,:)
 	x_8bndz(:,jy,:)=x1_8bndz(:,jy,:)+xint_8bndz(:,:)
+	endif
    19 continue
   
       return
       end
 
 
+!hw************************************************************
+!to calculate the list of jxjz tag for the irregular points with four type
+! calcaulated in the subroutine jx_jz_list_bndry8_cut_cell_v2_fixed
+! used in the subroutine bndry8_cut_cell_v2_fixed & efield_cut_cell_v2_fixed
+	subroutine jx_jz_list_bndry8_cut_cell_v2_fixed
+      use declare
+	implicit none
+	integer m_times,n_list1,n_list2,n_list3,n_list4,itag
+      include 'mpif.h'
+
+
+    do 1 m_times=1,2
+
+	n_list1=0
+	n_list2=0
+	n_list3=0
+	n_list4=0
+
+    do 3 jz=iz_first,iz_last
+    do 3 jx=ix_first,ix_last
+    itag=gdtp_ep(jx,jz,6)
+    if((gdtp_ep(jx,jz,4).eq.5).and.(gdtp_ep(jx,jz,1).ne.5).and.(gdtp_ep(jx-1,jz,5).eq.1).and.(jx.gt.ix_first+1)) then ! jx is the inside dropped point
+
+	n_list1=n_list1+1
+	if(m_times.eq.2) then
+	jxjz_list1_bndry(n_list1,1)=jx
+	jxjz_list1_bndry(n_list1,2)=jz
+	endif
+
+    endif
+    if((gdtp_ep(jx,jz,4).eq.5).and.(gdtp_ep(jx,jz,1).ne.5).and.(gdtp_ep(jx+1,jz,5).eq.-1).and.(jx.lt.ix_last-1)) then ! jx is the inside dropped point
+
+	n_list2=n_list2+1
+	if(m_times.eq.2) then
+	jxjz_list2_bndry(n_list2,1)=jx
+	jxjz_list2_bndry(n_list2,2)=jz
+	endif
+
+    endif
+
+!
+    itag=gdtp_ep(jx,jz,3)
+    if((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz,4).ne.5).and.(gdtp_ep(jx,jz-1,2).eq.1).and.(jz.gt.iz_first+1)) then ! jz is the inside dropped point
+
+	n_list3=n_list3+1
+	if(m_times.eq.2) then
+	jxjz_list3_bndry(n_list3,1)=jx
+	jxjz_list3_bndry(n_list3,2)=jz
+	endif
+
+    endif
+    if((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz,4).ne.5).and.(gdtp_ep(jx,jz+1,2).eq.-1).and.(jz.lt.iz_last-1)) then ! jz is the inside dropped point
+
+	n_list4=n_list4+1
+	if(m_times.eq.2) then
+	jxjz_list4_bndry(n_list4,1)=jx
+	jxjz_list4_bndry(n_list4,2)=jz
+	endif
+
+    endif
+
+    3 continue
+
+	if(m_times.eq.1) then
+	allocate(jxjz_list1_bndry(n_list1,2))
+	allocate(jxjz_list2_bndry(n_list2,2))
+	allocate(jxjz_list3_bndry(n_list3,2))
+	allocate(jxjz_list4_bndry(n_list4,2))
+	endif
+
+    1 continue
+
+
+	return
+	endsubroutine jx_jz_list_bndry8_cut_cell_v2_fixed
 
 !hw******************************************************************************
       subroutine stepon_cut_cell
@@ -22832,6 +23942,7 @@ end subroutine uptri
       include 'mpif.h'
 
 !      dts=dt/ncycl_atfs
+
       tt=time
       tt1=time+dt/6.
       tt2=time
@@ -22893,9 +24004,19 @@ end subroutine uptri
 !      ef(jx,jz,jy,2)=-x(jx,jz,jy,5)*x(jx,jz,jy,6)+x(jx,jz,jy,3)*x(jx,jz,jy,8)+eta(jx,jz,jy)*cur(jx,jz,jy,2)+xint(jx,jz,5)*xint(jx,jz,6)-xint(jx,jz,3)*xint(jx,jz,8)
 !      ef(jx,jz,jy,3)=-x(jx,jz,jy,3)*x(jx,jz,jy,7)+x(jx,jz,jy,4)*x(jx,jz,jy,6)+eta(jx,jz,jy)*cur(jx,jz,jy,3)+xint(jx,jz,3)*xint(jx,jz,7)-xint(jx,jz,4)*xint(jx,jz,6)
 
+
+      if(linear_mhd) then
+
+          ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*xint(jx,jz,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*xint(jx,jz,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
+          ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*xint(jx,jz,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*xint(jx,jz,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
+          ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*xint(jx,jz,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*xint(jx,jz,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+
+	else
+
       ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*x(jx,jz,jy,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*x(jx,jz,jy,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
       ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*x(jx,jz,jy,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*x(jx,jz,jy,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
       ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*x(jx,jz,jy,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*x(jx,jz,jy,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+	endif
 !      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+eta1(jx,jz,jy)*cint(jx,jz,1)
 !      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+eta1(jx,jz,jy)*cint(jx,jz,2)
 !      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+eta1(jx,jz,jy)*cint(jx,jz,3)
@@ -22907,10 +24028,19 @@ end subroutine uptri
       do 12 jz=iz_first+2,iz_last-2
       do 12 jx=ix_first+2,ix_last-2
 
+      if(linear_mhd) then
+
+      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x1(jx,jz,jy,8)-cur(jx,jz,jy,3)*x1(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
+      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x1(jx,jz,jy,6)-cur(jx,jz,jy,1)*x1(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
+      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x1(jx,jz,jy,7)-cur(jx,jz,jy,2)*x1(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
+
+	else
+
       ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x(jx,jz,jy,8)-cur(jx,jz,jy,3)*x(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
       ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x(jx,jz,jy,6)-cur(jx,jz,jy,1)*x(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
       ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x(jx,jz,jy,7)-cur(jx,jz,jy,2)*x(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
       
+	endif
 12     continue
        endif
        
@@ -23120,7 +24250,9 @@ end subroutine uptri
       subroutine efield_cut_cell_v2_fixed
       use declare
 	implicit none
-	integer itag
+	integer itag,ibnd
+	! if true, use the jxjz_list in boundary interpolation
+	logical, parameter :: use_jxjz_list=.true. 
       include 'mpif.h'
 
 
@@ -23131,9 +24263,19 @@ end subroutine uptri
 !      ef(jx,jz,jy,2)=-x(jx,jz,jy,5)*x(jx,jz,jy,6)+x(jx,jz,jy,3)*x(jx,jz,jy,8)+eta(jx,jz,jy)*cur(jx,jz,jy,2)+xint(jx,jz,5)*xint(jx,jz,6)-xint(jx,jz,3)*xint(jx,jz,8)
 !      ef(jx,jz,jy,3)=-x(jx,jz,jy,3)*x(jx,jz,jy,7)+x(jx,jz,jy,4)*x(jx,jz,jy,6)+eta(jx,jz,jy)*cur(jx,jz,jy,3)+xint(jx,jz,3)*xint(jx,jz,7)-xint(jx,jz,4)*xint(jx,jz,6)
 
+      if(linear_mhd) then
+
+          ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*xint(jx,jz,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*xint(jx,jz,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
+          ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*xint(jx,jz,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*xint(jx,jz,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
+          ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*xint(jx,jz,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*xint(jx,jz,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+
+	else
+
       ef(jx,jz,jy,1)=-x1(jx,jz,jy,4)*x(jx,jz,jy,8)-xint(jx,jz,4)*x1(jx,jz,jy,8)+x1(jx,jz,jy,5)*x(jx,jz,jy,7)+xint(jx,jz,5)*x1(jx,jz,jy,7)
       ef(jx,jz,jy,2)=-x1(jx,jz,jy,5)*x(jx,jz,jy,6)-xint(jx,jz,5)*x1(jx,jz,jy,6)+x1(jx,jz,jy,3)*x(jx,jz,jy,8)+xint(jx,jz,3)*x1(jx,jz,jy,8)
       ef(jx,jz,jy,3)=-x1(jx,jz,jy,3)*x(jx,jz,jy,7)-xint(jx,jz,3)*x1(jx,jz,jy,7)+x1(jx,jz,jy,4)*x(jx,jz,jy,6)+xint(jx,jz,4)*x1(jx,jz,jy,6)
+
+	endif
 !      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+eta1(jx,jz,jy)*cint(jx,jz,1)
 !      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+eta1(jx,jz,jy)*cint(jx,jz,2)
 !      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+eta1(jx,jz,jy)*cint(jx,jz,3)
@@ -23145,10 +24287,19 @@ end subroutine uptri
       do 12 jz=iz_first+2,iz_last-2
       do 12 jx=ix_first+2,ix_last-2
 
+      if(linear_mhd) then
+
+      ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x1(jx,jz,jy,8)-cur(jx,jz,jy,3)*x1(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
+      ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x1(jx,jz,jy,6)-cur(jx,jz,jy,1)*x1(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
+      ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x1(jx,jz,jy,7)-cur(jx,jz,jy,2)*x1(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
+
+	else
+
       ef(jx,jz,jy,1)=ef(jx,jz,jy,1)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,2)*x(jx,jz,jy,8)-cur(jx,jz,jy,3)*x(jx,jz,jy,7)+cint(jx,jz,2)*x1(jx,jz,jy,8)-cint(jx,jz,3)*x1(jx,jz,jy,7)-x1r(jx,jz,jy,2))
       ef(jx,jz,jy,2)=ef(jx,jz,jy,2)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,3)*x(jx,jz,jy,6)-cur(jx,jz,jy,1)*x(jx,jz,jy,8)+cint(jx,jz,3)*x1(jx,jz,jy,6)-cint(jx,jz,1)*x1(jx,jz,jy,8)-xy(jx,jz,jy,2)/xx(jx))    
       ef(jx,jz,jy,3)=ef(jx,jz,jy,3)+fdi(jx,jz)/x(jx,jz,jy,1)*(cur(jx,jz,jy,1)*x(jx,jz,jy,7)-cur(jx,jz,jy,2)*x(jx,jz,jy,6)+cint(jx,jz,1)*x1(jx,jz,jy,7)-cint(jx,jz,2)*x1(jx,jz,jy,6)-x1z(jx,jz,jy,2))
       
+	endif
 12     continue
        endif
        
@@ -23223,6 +24374,63 @@ end subroutine uptri
        call mpi_transfersm(ef(:,:,:,:),3)
     ! haowei need to obatin the efield for bnd grids, i.e., ef_3bndz, ef_3bndx
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
+    if(hall) then ! if hall, it need to solve the boundary for the E field
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! if true, use the jxjz_list in boundary interpolation
+	if(use_jxjz_list) then
+
+    do m=1,8
+    do jy=iy_first,iy_last
+!
+    do ibnd=1,size(jxjz_list1_bndry,dim=1)
+	jx=jxjz_list1_bndry(ibnd,1)
+	jz=jxjz_list1_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,6)
+
+    call interp1d2l(ef(jx-2,jz,jy,m),ef(jx-1,jz,jy,m),ef_3bndz(itag,jy,m), &
+            xx(jx-2),xx(jx-1),bndz_grd(itag,1),xx(jx),ef(jx,jz,jy,m))
+
+    enddo
+!
+    do ibnd=1,size(jxjz_list2_bndry,dim=1)
+	jx=jxjz_list2_bndry(ibnd,1)
+	jz=jxjz_list2_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,6)
+
+    call interp1d2l(ef(jx+2,jz,jy,m),ef(jx+1,jz,jy,m),ef_3bndz(itag,jy,m), &
+            xx(jx+2),xx(jx+1),bndz_grd(itag,1),xx(jx),ef(jx,jz,jy,m))
+
+    enddo
+!		
+    do ibnd=1,size(jxjz_list3_bndry,dim=1)
+	jx=jxjz_list3_bndry(ibnd,1)
+	jz=jxjz_list3_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,3)
+
+    call interp1d2l(ef(jx,jz-2,jy,m),ef(jx,jz-1,jy,m),ef_3bndx(itag,jy,m), &
+            zz(jz-2),zz(jz-1),bndx_grd(itag,2),zz(jz),ef(jx,jz,jy,m))
+
+    enddo
+!		
+    do ibnd=1,size(jxjz_list4_bndry,dim=1)
+	jx=jxjz_list4_bndry(ibnd,1)
+	jz=jxjz_list4_bndry(ibnd,2)
+    itag=gdtp_ep(jx,jz,3)
+
+    call interp1d2l(ef(jx,jz+2,jy,m),ef(jx,jz+1,jy,m),ef_3bndx(itag,jy,m), &
+            zz(jz+2),zz(jz+1),bndx_grd(itag,2),zz(jz),ef(jx,jz,jy,m))
+
+    enddo
+    enddo
+    enddo
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	else
+
     do 3 jz=iz_first,iz_last
     do 3 jx=ix_first,ix_last
     itag=gdtp_ep(jx,jz,6)
@@ -23273,16 +24481,22 @@ end subroutine uptri
 
     3 continue
 
-!	do 10 m=1,3
-!      do 10 jy=1,my
-!      do 10 jz=iz_first,iz_last
-!      do 10 jx=ix_first,ix_last
+	endif !use_jxjz_list
+
+    endif  ! hall
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
+
+	do 10 m=1,3
+      do 10 jy=1,my
+      do 10 jz=iz_first,iz_last
+      do 10 jx=ix_first,ix_last
 !      if(psi(jx,jz).lt.psia1) then
 !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
-!	ef(jx,jz,jy,m)=ef(jx,jz,jy,m)*hypb_ratio(jx,jz)
+	ef(jx,jz,jy,m)=ef(jx,jz,jy,m)*hypb_ratio(jx,jz)
 !	endif
 !	endif
-!   10 continue
+   10 continue
 !       call mpi_transfersm(ef(:,:,:,:),3)
        !**********************************************************
       if(smoothef) call smthef_dis_v2(3)
@@ -23367,8 +24581,8 @@ end subroutine uptri
 !    hypb_value=0.98d0
 !    tmp1=dztt*(2.d0+grd_type_ratio)*2.d0/(maxval(zzt)-minval(zzt))
 !    tmp2=dxtt*(2.d0+grd_type_ratio)*2.d0/(maxval(xxt)-minval(xxt))
-    tmp1=dztt*(2.5d0+grd_type_ratio)
-    tmp2=dxtt*(2.5d0+grd_type_ratio)
+    tmp1=dztt*(2.5d0+grd_type_ratio)/zdim
+    tmp2=dxtt*(2.5d0+grd_type_ratio)/xdim
     hypb_value=max(tmp1,tmp2)
 
     if(nrank.eq.0) print*,'hypb_value=',hypb_value
@@ -24025,16 +25239,16 @@ end subroutine uptri
       endif
       endif
 
-      rr11=dsqrt((xb(id1)-xzero)**2+(zb(id1)-zzero)**2)
-      rr22=dsqrt((xb(id2)-xzero)**2+(zb(id2)-zzero)**2)
-      rr33=dsqrt((xb(id3)-xzero)**2+(zb(id3)-zzero)**2)
-      rr44=dsqrt((xb(id4)-xzero)**2+(zb(id4)-zzero)**2)
+      rr11=dsqrt(((xb(id1)-xzero)/xdim)**2+((zb(id1)-zzero)/zdim)**2)
+      rr22=dsqrt(((xb(id2)-xzero)/xdim)**2+((zb(id2)-zzero)/zdim)**2)
+      rr33=dsqrt(((xb(id3)-xzero)/xdim)**2+((zb(id3)-zzero)/zdim)**2)
+      rr44=dsqrt(((xb(id4)-xzero)/xdim)**2+((zb(id4)-zzero)/zdim)**2)
 
       if(((thet2.le.theta_ep(jx,jz)).and.(thet3.ge.theta_ep(jx,jz))).or. &
               ((thet2.ge.theta_ep(jx,jz)).and.(thet3.le.theta_ep(jx,jz)))) then
       call lag_intp1d4p(thet1,rr11,thet2,rr22,thet3,rr33,thet4,rr44,theta_ep(jx,jz),rrmax_ep(jx,jz))
 
-      dist_to_bnd(jx,jz)=dabs(dabs(rrmax_ep(jx,jz))-dsqrt((xx(jx)-xzero)**2+(zz(jz)-zzero)**2))
+      dist_to_bnd(jx,jz)=dabs(dabs(rrmax_ep(jx,jz))-dsqrt(((xx(jx)-xzero)/xdim)**2+((zz(jz)-zzero)/zdim)**2))
       dist_to_bnd(jx,jz)=min(dist_to_bnd(jx,jz),0.8d0)
       exit
       endif
@@ -24138,6 +25352,12 @@ end subroutine uptri
 		  BT_DRRZ, BT_DZRZ, BZ_DRRZ, BZ_DZRZ, JR_DRRZ, JR_DZRZ, &
 		  JT_DRRZ, JT_DZRZ, JZ_DRRZ, JZ_DZRZ, PSI_DRRZ, PSI_DZRZ, &
 		  ERR_R_2D, ERR_T_2D, ERR_Z_2D, DIVB_2D
+     real*8, dimension(mbm) :: psb2
+     integer, dimension(npr) :: itb1
+     integer ib2, mb2
+     real*8 psb2min, psb2max, dps
+     character*10 output
+     character*3 cn1
 
 	include 'mpif.h'
 ! read eq_pgfile_1d.dat, functions of psi
@@ -24220,24 +25440,31 @@ end subroutine uptri
 ! after read the files, transform the necessary data into clt form
 	aa=1 ! normalized minor radius
 	aa2=aa*aa ! normalized minor radius
-	xzero=(maxval(RBS)+minval(RBS))/2.d0
+!	xzero=(maxval(RBS)+minval(RBS))/2.d0
 	xmax=RRMAX
 	xmin=RRMIN
 	zmax=ZZMAX
 	zmin=ZZMIN
 	xmg=RMAXIS
 	zmg=ZMAXIS
+	xzero=xmg
+	zzero=zmg
+	xdim=(xmax-xmin)/2.d0
+	zdim=(zmax-zmin)/2.d0
 	psia=PSIBRY
 	psmin=PSIMAG
 	psmax=PSIBRY
 	qmin=minval(Q_1D)
 	qmax=maxval(Q_1D)
 	q0=Q_1D(1)
-	pssmw=5.*(psia-psmin)/10.d0
+!	pssmw=5.*(psia-psmin)/10.d0
 
 
 	
 	rh(:,:)=NI_2D(:,:)
+
+	if(rho_unif) rh(:,:)=1.d0
+
 	pt(:,:)=PRES_2D(:,:)
 	ux(:,:)=VR_2D(:,:)
 	uy(:,:)=VT_2D(:,:)
@@ -24302,6 +25529,43 @@ end subroutine uptri
       enddo
 
 
+      ib2=0
+      do jx=3,mxt-2
+      do jz=3,mzt-2      
+       if((pst(jx-2,jz) .lt.psiam .and. pst(jx+2,jz) .lt.psiam .and. pst(jx,jz-2) .lt.psiam .and. pst(jx,jz+2).lt.psiam) .and. &
+         (pst(jx-3,jz) .ge.psiam  .or. pst(jx+3,jz) .ge.psiam  .or. pst(jx,jz-3) .ge.psiam  .or. pst(jx,jz+3).ge.psiam  .or.  &
+          pst(jx-1,jz-3).ge.psiam .or. pst(jx+1,jz-3).ge.psiam .or. pst(jx-3,jz-1).ge.psiam .or. pst(jx-3,jz+1).ge.psiam .or.  &
+          pst(jx-1,jz+3).ge.psiam .or. pst(jx+1,jz+3).ge.psiam .or. pst(jx+3,jz-1).ge.psiam .or. pst(jx+3,jz+1).ge.psiam))   then
+
+        ib2=ib2+1
+!        jb2x(ib2)=jx
+!        jb2z(ib2)=jz
+!        xxb2(ib2)=xxt(jx)
+!        zzb2(ib2)=zzt(jz)
+        psb2(ib2)=pst(jx,jz)
+!        thb2(ib2)=thxz(jx,jz)
+ !       nrankb(ib)=(jbx(ib)-1)/mx
+      endif
+      enddo
+      enddo
+      mb2=ib2
+
+      psb2min=minval(psb2(1:mb2))    
+      psb2max=maxval(psb2(1:mb2))
+ 
+!     ps(mpsa)=psia
+!     ps(mpsa-2)=psb2min
+!     ps(mpsa-1)=(ps(mpsa)+ps(mpsa-2))/2
+     dps=(psia-psb2min)/2
+!     do js=mpsa-3,mpsa-nda,-1
+!     ps(js)=ps(js+1)-dps
+!     enddo
+
+     pssm=psia-5.*dps
+     pssmw=5.*dps
+
+
+
       open(unit=204,file='gridts.dat',status='unknown',form='formatted')
       write(204,200)( (tpt(jx,jz),jx=1,mxt),jz=1,mzt)
  200   format((1x,e12.5))
@@ -24337,18 +25601,1132 @@ end subroutine uptri
 	end
 
 
+!hw**************************************************************
+	subroutine rmp_east_pert
+      use declare
+	implicit none
+	integer i, j, n_up, n_low, nphi, nab, k
+	real*8, dimension(8,2) :: rmp_set
+	real*8 i0, phi_m, phi_p, raa, zaa, rbb, zbb, rcc, zcc, rdd, zdd, ii0
+	real*8 ra1,za1,rb1,zb1,rc1,zc1,rd1,zd1
+	real*8 dl, dlx, dly, dlz, rx, ry, rz, phi, dphi, r0, phi0, z0
+	real*8 u0, b0_norm, a0_norm, lab, l, rd
+      include 'mpif.h'
+	
+	u0=4.d0*pi*1.d-7
+!	b0_norm=2.2745d0 ! T
+	b0_norm=2.246028872496384d0 ! T
+	a0_norm=1.d0 ! m
+!	i0=100 ! A
+	i0=i0_rmp ! A
+	n_up=8
+	n_low=8
+	nphi=100
+	nab=20
+
+! M Jia et al 2016 Plasma Phys. Control. Fusion 58 055010 
+	ra1=2.092
+	za1=0.759
+	rb1=2.278
+	zb1=0.577
+	rc1=2.278
+	zc1=-0.577
+	rd1=2.092
+	zd1=-0.759
+
+!	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+
+	bx_rmp(:,:,:)=0
+	by_rmp(:,:,:)=0
+	bz_rmp(:,:,:)=0
+	
+	rmp_set(:,1)=(/1., 1., 1., 1., -1., -1., -1., -1./)
+	rmp_set(:,2)=(/1., 1., 1., 1., -1., -1., -1., -1./)
+!	rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
+!	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
+!	rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
+!	rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
+!	rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
+!	rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
+!	rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
+!	rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
+!	rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
+!	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
+
+! for the grid point ***************************
+	do 11 k=1,2
+	if(k.eq.1) then ! for the A-B upper
+		  raa=ra1
+		  zaa=za1
+		  rbb=rb1
+		  zbb=zb1
+	endif
+	if(k.eq.2) then ! for the C-D lower
+		  raa=rc1
+		  zaa=zc1
+		  rbb=rd1
+		  zbb=zd1
+	endif
+
+	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+	do 1 jx=ix_first,ix_last
+	do 1 jz=iz_first,iz_last
+	do 1 jy=iy_first,iy_last
+
+	r0=xx(jx)*a0_norm
+	phi0=yy(jy)
+	z0=zz(jz)*a0_norm
+
+
+	do 2 i=1,n_up
+
+	! for coil A-B upper(k=2 is for C-D lower)
+
+	if(k.eq.1) then ! for the A-B upper
+	phi_m=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+	if(k.eq.2) then ! for the C-D lower
+	phi_m=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+
+
+	do 3 j=1,nphi
+	phi=phi_m-0.5*dphi+j*dphi
+	! for A toroidal part
+	ii0=rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-raa*cos(phi)
+	ry=r0*sin(phi0)-raa*sin(phi)
+	rz=z0-zaa
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-raa*sin(phi)*dphi
+	dly=raa*cos(phi)*dphi
+	dlz=0.
+
+	bx_rmp(jx,jz,jy)=bx_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	by_rmp(jx,jz,jy)=by_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	bz_rmp(jx,jz,jy)=bz_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+
+	! for B toroidal part
+	ii0=-rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-rbb*cos(phi)
+	ry=r0*sin(phi0)-rbb*sin(phi)
+	rz=z0-zbb
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-rbb*sin(phi)*dphi
+	dly=rbb*cos(phi)*dphi
+	dlz=0.
+
+	bx_rmp(jx,jz,jy)=bx_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	by_rmp(jx,jz,jy)=by_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	bz_rmp(jx,jz,jy)=bz_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    3 continue
+
+	! for left and right poroidal part, phi=phi_m or phi_p
+	dl=lab/nab
+
+	do 4 j=1,nab
+	l=0-0.5*dl+j*dl
+	! for left poroidal part
+	ii0=-rmp_set(i,k)*i0
+	phi=phi_m
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	bx_rmp(jx,jz,jy)=bx_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	by_rmp(jx,jz,jy)=by_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	bz_rmp(jx,jz,jy)=bz_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+	
+
+	! for right poroidal part
+	ii0=rmp_set(i,k)*i0
+	phi=phi_p
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	bx_rmp(jx,jz,jy)=bx_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	by_rmp(jx,jz,jy)=by_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	bz_rmp(jx,jz,jy)=bz_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    4 continue
+
+    2 continue
+
+    1 continue
+
+   11 continue
+
+
+	do 12 jx=ix_first,ix_last
+	do 12 jz=iz_first,iz_last
+	do 12 jy=iy_first,iy_last
+	phi0=yy(jy)
+	! normalization and transfer coord
+	b_rmp(jx,jz,jy,1)=bx_rmp(jx,jz,jy)*cos(phi0)+by_rmp(jx,jz,jy)*sin(phi0)
+	b_rmp(jx,jz,jy,2)=by_rmp(jx,jz,jy)*cos(phi0)-bx_rmp(jx,jz,jy)*sin(phi0)
+	b_rmp(jx,jz,jy,3)=bz_rmp(jx,jz,jy)
+
+	b_rmp(jx,jz,jy,:)=b_rmp(jx,jz,jy,:)/b0_norm
+!	b_rmp(jx,jz,jy,:)=b_rmp(jx,jz,jy,:)*(1.+tanh((psi(jx,jz)-psia)*50.))/2.
+
+   12 continue
+
+    	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp(:,:,:,:)
+!      do jy=iy_first,iy_last
+!      x1(:,:,jy,:)=x(:,:,jy,:)-xint(:,:,:)
+!      enddo
+
+
+	call rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+	call rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+      
+    	return
+	end
+
+	
+!hw**************************************************************
+	subroutine rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+      use declare
+	implicit none
+	integer i, j, n_up, n_low, nphi, nab, k
+	real*8, dimension(8,2) :: rmp_set
+	real*8 i0, phi_m, phi_p, raa, zaa, rbb, zbb, rcc, zcc, rdd, zdd, ii0
+	real*8 ra1,za1,rb1,zb1,rc1,zc1,rd1,zd1
+	real*8 dl, dlx, dly, dlz, rx, ry, rz, phi, dphi, r0, phi0, z0
+	real*8 u0, b0_norm, a0_norm, lab, l, rd
+      include 'mpif.h'
+
+	allocate(b_rmp_bndx(nbndx,my,3))
+	
+!	u0=4.d0*pi*1.d-7
+!	b0_norm=2.2745d0 ! T
+!	a0_norm=0.8 ! m
+!	i0=4000 ! A
+!	n_up=8
+!	n_low=8
+!	nphi=100
+!	nab=20
+
+!	ra1=2.095
+!	za1=0.765
+!	rb1=2.28
+!	zb1=0.586
+!	rc1=2.28
+!	zc1=-0.586
+!	rd1=2.095
+!	zd1=-0.765
+
+!	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+
+	b_rmp_bndx(:,:,:)=0.
+	
+!	rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+!	rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+
+! for the grid point ***************************
+	do 11 k=1,2
+	if(k.eq.1) then ! for the A-B upper
+		  raa=ra1
+		  zaa=za1
+		  rbb=rb1
+		  zbb=zb1
+	endif
+	if(k.eq.2) then ! for the C-D lower
+		  raa=rc1
+		  zaa=zc1
+		  rbb=rd1
+		  zbb=zd1
+	endif
+
+	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+	do 1 jx=1,nbndx
+	do 1 jy=iy_first,iy_last
+
+	r0=bndx_grd(jx,1)*a0_norm
+	phi0=yy(jy)
+	z0=bndx_grd(jx,2)*a0_norm
+
+
+	do 2 i=1,n_up
+
+	! for coil A-B upper(k=2 is for C-D lower)
+
+	if(k.eq.1) then ! for the A-B upper
+	phi_m=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+	if(k.eq.2) then ! for the C-D lower
+	phi_m=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+
+	do 3 j=1,nphi
+	phi=phi_m-0.5*dphi+j*dphi
+	! for A toroidal part
+	ii0=rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-raa*cos(phi)
+	ry=r0*sin(phi0)-raa*sin(phi)
+	rz=z0-zaa
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-raa*sin(phi)*dphi
+	dly=raa*cos(phi)*dphi
+	dlz=0.
+
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+
+	! for B toroidal part
+	ii0=-rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-rbb*cos(phi)
+	ry=r0*sin(phi0)-rbb*sin(phi)
+	rz=z0-zbb
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-rbb*sin(phi)*dphi
+	dly=rbb*cos(phi)*dphi
+	dlz=0.
+
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    3 continue
+
+	! for left and right poroidal part, phi=phi_m or phi_p
+	dl=lab/nab
+
+	do 4 j=1,nab
+	l=0-0.5*dl+j*dl
+	! for left poroidal part
+	ii0=-rmp_set(i,k)*i0
+	phi=phi_m
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+	
+
+	! for right poroidal part
+	ii0=rmp_set(i,k)*i0
+	phi=phi_p
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    4 continue
+
+    2 continue
+
+    1 continue
+
+   11 continue
+
+
+	do 12 jx=1,nbndx
+	do 12 jy=iy_first,iy_last
+	phi0=yy(jy)
+	! normalization and transfer coord
+	b_rmp_bndx(jx,jy,1)=b_rmp_bndx(jx,jy,1)*cos(phi0)+b_rmp_bndx(jx,jy,2)*sin(phi0)
+	b_rmp_bndx(jx,jy,2)=b_rmp_bndx(jx,jy,2)*cos(phi0)-b_rmp_bndx(jx,jy,1)*sin(phi0)
+	b_rmp_bndx(jx,jy,3)=b_rmp_bndx(jx,jy,3)
+
+	b_rmp_bndx(jx,jy,:)=b_rmp_bndx(jx,jy,:)/b0_norm
+
+   12 continue
+
+   	x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)
+!	do jy=1,my
+!	x1_8bndx(:,jy,:)=x_8bndx(:,jy,:)-xint_8bndx(:,:)
+!	enddo
+
+    	return
+	end
+
+!hw**************************************************************
+	subroutine rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+      use declare
+	implicit none
+	integer i, j, n_up, n_low, nphi, nab, k
+	real*8, dimension(8,2) :: rmp_set
+	real*8 i0, phi_m, phi_p, raa, zaa, rbb, zbb, rcc, zcc, rdd, zdd, ii0
+	real*8 ra1,za1,rb1,zb1,rc1,zc1,rd1,zd1
+	real*8 dl, dlx, dly, dlz, rx, ry, rz, phi, dphi, r0, phi0, z0
+	real*8 u0, b0_norm, a0_norm, lab, l, rd
+      include 'mpif.h'
+
+	allocate(b_rmp_bndz(nbndz,my,3))
+	
+!	u0=4.d0*pi*1.d-7
+!	b0_norm=2.2745d0 ! T
+!	a0_norm=0.8 ! m
+!	i0=4000 ! A
+!	n_up=8
+!	n_low=8
+!	nphi=100
+!	nab=20
+
+!	ra1=2.095
+!	za1=0.765
+!	rb1=2.28
+!	zb1=0.586
+!	rc1=2.28
+!	zc1=-0.586
+!	rd1=2.095
+!	zd1=-0.765
+
+!	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+	b_rmp_bndz(:,:,:)=0.
+	
+!	rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+!	rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+
+! for the grid point ***************************
+	do 11 k=1,2
+	if(k.eq.1) then ! for the A-B upper
+		  raa=ra1
+		  zaa=za1
+		  rbb=rb1
+		  zbb=zb1
+	endif
+	if(k.eq.2) then ! for the C-D lower
+		  raa=rc1
+		  zaa=zc1
+		  rbb=rd1
+		  zbb=zd1
+	endif
+
+	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+	do 1 jx=1,nbndz
+	do 1 jy=iy_first,iy_last
+
+	r0=bndz_grd(jx,1)*a0_norm
+	phi0=yy(jy)
+	z0=bndz_grd(jx,2)*a0_norm
+
+
+	do 2 i=1,n_up
+
+	! for coil A-B upper(k=2 is for C-D lower)
+
+	if(k.eq.1) then ! for the A-B upper
+	phi_m=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+	if(k.eq.2) then ! for the C-D lower
+	phi_m=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+
+	do 3 j=1,nphi
+	phi=phi_m-0.5*dphi+j*dphi
+	! for A toroidal part
+	ii0=rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-raa*cos(phi)
+	ry=r0*sin(phi0)-raa*sin(phi)
+	rz=z0-zaa
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-raa*sin(phi)*dphi
+	dly=raa*cos(phi)*dphi
+	dlz=0.
+
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+
+	! for B toroidal part
+	ii0=-rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-rbb*cos(phi)
+	ry=r0*sin(phi0)-rbb*sin(phi)
+	rz=z0-zbb
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-rbb*sin(phi)*dphi
+	dly=rbb*cos(phi)*dphi
+	dlz=0.
+
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    3 continue
+
+	! for left and right poroidal part, phi=phi_m or phi_p
+	dl=lab/nab
+
+	do 4 j=1,nab
+	l=0-0.5*dl+j*dl
+	! for left poroidal part
+	ii0=-rmp_set(i,k)*i0
+	phi=phi_m
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+	
+
+	! for right poroidal part
+	ii0=rmp_set(i,k)*i0
+	phi=phi_p
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dly*rz-dlz*ry)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlz*rx-dlx*rz)
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)+u0*ii0/4./pi*1./rd**3*(dlx*ry-dly*rx)
+    4 continue
+
+    2 continue
+
+    1 continue
+
+   11 continue
+
+
+	do 12 jx=1,nbndz
+	do 12 jy=iy_first,iy_last
+	phi0=yy(jy)
+	! normalization and transfer coord
+	b_rmp_bndz(jx,jy,1)=b_rmp_bndz(jx,jy,1)*cos(phi0)+b_rmp_bndz(jx,jy,2)*sin(phi0)
+	b_rmp_bndz(jx,jy,2)=b_rmp_bndz(jx,jy,2)*cos(phi0)-b_rmp_bndz(jx,jy,1)*sin(phi0)
+	b_rmp_bndz(jx,jy,3)=b_rmp_bndz(jx,jy,3)
+
+	b_rmp_bndz(jx,jy,:)=b_rmp_bndz(jx,jy,:)/b0_norm
+
+   12 continue
+
+   	x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)
+!	do jy=1,my
+!	x1_8bndz(:,jy,:)=x_8bndz(:,jy,:)-xint_8bndz(:,:)
+!	enddo
+
+    	return
+	end
+
+	
+
+!hw**************************************************************
+	subroutine rmp_east_pert_withA
+      use declare
+	implicit none
+	integer i, j, n_up, n_low, nphi, nab, k
+	real*8, dimension(8,2) :: rmp_set
+	real*8, dimension(mxt,mzt,my) :: Ax_rmp, Ay_rmp, Az_rmp
+	real*8 i0, phi_m, phi_p, raa, zaa, rbb, zbb, rcc, zcc, rdd, zdd, ii0
+	real*8 ra1,za1,rb1,zb1,rc1,zc1,rd1,zd1
+	real*8 dl, dlx, dly, dlz, rx, ry, rz, phi, dphi, r0, phi0, z0
+	real*8 u0, b0_norm, a0_norm, lab, l, rd
+      include 'mpif.h'
+	
+	u0=4.d0*pi*1.d-7
+!	b0_norm=2.2745d0 ! T
+	b0_norm=2.246028872496384d0 ! T
+	a0_norm=1.d0 ! m
+!	i0=100 ! A
+	i0=i0_rmp
+	n_up=8
+	n_low=8
+	nphi=100
+	nab=20
+
+! M Jia et al 2016 Plasma Phys. Control. Fusion 58 055010 
+	ra1=2.092
+	za1=0.759
+	rb1=2.278
+	zb1=0.577
+	rc1=2.278
+	zc1=-0.577
+	rd1=2.092
+	zd1=-0.759
+
+!	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+
+	Ax_rmp(:,:,:)=0.
+	Ay_rmp(:,:,:)=0.
+	Az_rmp(:,:,:)=0.
+	
+	rmp_set(:,1)=(/1., 1., 1., 1., -1., -1., -1., -1./)
+	rmp_set(:,2)=(/1., 1., 1., 1., -1., -1., -1., -1./)
+!	rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
+!	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
+!	rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
+!	rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
+!	rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
+!	rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
+!	rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
+!	rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
+!	rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
+!	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
+
+
+! for the grid point ***************************
+	do 11 k=1,2
+	if(k.eq.1) then ! for the A-B upper
+		  raa=ra1
+		  zaa=za1
+		  rbb=rb1
+		  zbb=zb1
+	endif
+	if(k.eq.2) then ! for the C-D lower
+		  raa=rc1
+		  zaa=zc1
+		  rbb=rd1
+		  zbb=zd1
+	endif
+
+	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+
+	do 1 jx=1,mxt
+	do 1 jz=1,mzt
+	do 1 jy=iy_first,iy_last
+
+	r0=xxt(jx)*a0_norm
+	phi0=yy(jy)
+	z0=zzt(jz)*a0_norm
+
+
+	do 2 i=1,n_up
+
+	! for coil A-B upper(k=2 is for C-D lower)
+
+	if(k.eq.1) then ! for the A-B upper
+	phi_m=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_up+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+	if(k.eq.2) then ! for the C-D lower
+	phi_m=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)-18.5d0)/180.d0*pi
+	phi_p=(rmp_phi_low+360.d0/n_up*(i*1.d0-1.d0)+18.5d0)/180.d0*pi
+	dphi=(phi_p-phi_m)/nphi
+	endif
+
+	do 3 j=1,nphi
+	phi=phi_m-0.5*dphi+j*dphi
+	! for A toroidal part
+	ii0=rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-raa*cos(phi)
+	ry=r0*sin(phi0)-raa*sin(phi)
+	rz=z0-zaa
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-raa*sin(phi)*dphi
+	dly=raa*cos(phi)*dphi
+	dlz=0.
+
+	Ax_rmp(jx,jz,jy)=Ax_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlx
+	Ay_rmp(jx,jz,jy)=Ay_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dly
+	Az_rmp(jx,jz,jy)=Az_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlz
+
+	! for B toroidal part
+	ii0=-rmp_set(i,k)*i0
+	rx=r0*cos(phi0)-rbb*cos(phi)
+	ry=r0*sin(phi0)-rbb*sin(phi)
+	rz=z0-zbb
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=-rbb*sin(phi)*dphi
+	dly=rbb*cos(phi)*dphi
+	dlz=0.
+
+	Ax_rmp(jx,jz,jy)=Ax_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlx
+	Ay_rmp(jx,jz,jy)=Ay_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dly
+	Az_rmp(jx,jz,jy)=Az_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlz
+    3 continue
+
+	! for left and right poroidal part, phi=phi_m or phi_p
+	dl=lab/nab
+
+	do 4 j=1,nab
+	l=0-0.5*dl+j*dl
+	! for left poroidal part
+	ii0=-rmp_set(i,k)*i0
+	phi=phi_m
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	Ax_rmp(jx,jz,jy)=Ax_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlx
+	Ay_rmp(jx,jz,jy)=Ay_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dly
+	Az_rmp(jx,jz,jy)=Az_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlz
+	
+
+	! for right poroidal part
+	ii0=rmp_set(i,k)*i0
+	phi=phi_p
+	rx=r0*cos(phi0)-(raa+(rbb-raa)/lab*l)*cos(phi)
+	ry=r0*sin(phi0)-(raa+(rbb-raa)/lab*l)*sin(phi)
+	rz=z0-zaa-(zbb-zaa)/lab*l
+	rd=sqrt(rx**2+ry**2+rz**2)
+
+	dlx=(rbb-raa)*cos(phi)*dl/lab
+	dly=(rbb-raa)*sin(phi)*dl/lab
+	dlz=(zbb-zaa)*dl/lab
+
+	Ax_rmp(jx,jz,jy)=Ax_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlx
+	Ay_rmp(jx,jz,jy)=Ay_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dly
+	Az_rmp(jx,jz,jy)=Az_rmp(jx,jz,jy)+u0*ii0/4./pi*1./rd*dlz
+    4 continue
+
+    2 continue
+
+    1 continue
+
+   11 continue
+
+
+	do 12 jx=1,mxt
+	do 12 jz=1,mzt
+	do 12 jy=iy_first,iy_last
+	phi0=yy(jy)
+	! normalization and transfer coord
+	At_rmp(jx,jz,jy,1)=Ax_rmp(jx,jz,jy)*cos(phi0)+Ay_rmp(jx,jz,jy)*sin(phi0)
+	At_rmp(jx,jz,jy,2)=Ay_rmp(jx,jz,jy)*cos(phi0)-Ax_rmp(jx,jz,jy)*sin(phi0)
+	At_rmp(jx,jz,jy,3)=Az_rmp(jx,jz,jy)
+
+
+!	At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)*(1.+tanh((pst(jx,jz)-1.07)*50.))/2.
+	At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)/a0_norm/b0_norm
+! this method cannot be used below, for At_rmp is for total Box and hypb_raito
+! is for sub-box.
+!	hypb_value=2.984926524705880E-002
+!	At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-hypb_ratio(jx,jz))
+!	At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-max(0.d0,dtanh((dist_to_bnd(jx,jz)-4.d-2)*30.d0)))
+
+   12 continue
+
+!haowei:  calculate Bt_rmp=\cross A_rmp
+	call convt_At_rmp
+	do jx=1,mxt
+	do jz=1,mzt
+	do jy=iy_first,iy_last
+	Bt_rmp(jx,jz,jy,1)=dAy_rmp(jx,jz,jy,3)/xxt(jx)-dAz_rmp(jx,jz,jy,2)
+	Bt_rmp(jx,jz,jy,2)=dAz_rmp(jx,jz,jy,1)-dAx_rmp(jx,jz,jy,3)
+	Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,2)/xxt(jx)+dAx_rmp(jx,jz,jy,2)-dAy_rmp(jx,jz,jy,1)/xxt(jx)
+!	Bt_rmp(jx,jz,jy,1)=At_rmp(jx,jz,jy,1)
+!	Bt_rmp(jx,jz,jy,2)=At_rmp(jx,jz,jy,2)
+!	Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,3)
+
+	enddo
+	enddo
+	enddo
+
+	do jy=iy_first,iy_last
+      do jz=iz_first,iz_last
+      do jx=ix_first,ix_last
+      b_rmp(jx,jz,jy,1)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,1)
+      b_rmp(jx,jz,jy,2)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,2)
+      b_rmp(jx,jz,jy,3)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,3)
+	enddo
+	enddo
+	enddo
+
+! calculate the b_rmp_outside, the fixed part
+	do jx=1,mxt
+	do jz=1,mzt
+	do jy=iy_first,iy_last
+	At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)*(1.+tanh((pst(jx,jz)-1.09)*50.))/2.
+	enddo
+	enddo
+	enddo
+
+!haowei:  calculate Bt_rmp=\cross A_rmp
+	call convt_At_rmp
+	do jx=1,mxt
+	do jz=1,mzt
+	do jy=iy_first,iy_last
+	Bt_rmp(jx,jz,jy,1)=dAy_rmp(jx,jz,jy,3)/xxt(jx)-dAz_rmp(jx,jz,jy,2)
+	Bt_rmp(jx,jz,jy,2)=dAz_rmp(jx,jz,jy,1)-dAx_rmp(jx,jz,jy,3)
+	Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,2)/xxt(jx)+dAx_rmp(jx,jz,jy,2)-dAy_rmp(jx,jz,jy,1)/xxt(jx)
+
+	enddo
+	enddo
+	enddo
+
+	do jy=iy_first,iy_last
+      do jz=iz_first,iz_last
+      do jx=ix_first,ix_last
+      b_rmp_out(jx,jz,jy,1)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,1)
+      b_rmp_out(jx,jz,jy,2)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,2)
+      b_rmp_out(jx,jz,jy,3)=Bt_rmp(nrkx(nrank)*mxm+jx-2,nrkz(nrank)*mzm+jz-2,jy,3)
+	enddo
+	enddo
+	enddo
+
+	call recrd_rmp_vacuum ! nst=0 is used to recrd the vacuum rmp field
+	call recrd_rmp_vacuum_2 ! nst=0 is used to recrd the vacuum rmp field
+
+! keep only b_rmp_out part
+!	b_rmp=b_rmp_out
+	b_rmp_in(:,:,:,:)=b_rmp(:,:,:,:)-b_rmp_out(:,:,:,:)
+
+!    	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp(:,:,:,:)
+!      do jy=iy_first,iy_last
+!      x1(:,:,jy,:)=x(:,:,jy,:)-xint(:,:,:)
+!      enddo
+
+
+	call map_Bt_rmp_to_bnd_grd
+!	call rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+!	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+!	call rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+!	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+
+!	if(nrank.eq.0) then
+!	open(unit=1,file='bx_rmp_bndz.dat',status='unknown',form='formatted')
+!	open(unit=2,file='bx_rmp_bndx.dat',status='unknown',form='formatted')
+!	write(1,33) ((bndz_grd(jx,1),bndz_grd(jx,2),b_rmp_bndz(jx,1,1)),jx=1,nbndz)
+!	write(2,33) ((bndx_grd(jx,1),bndx_grd(jx,2),b_rmp_bndx(jx,1,1)),jx=1,nbndx)
+!   33 format(3(1x,e12.5))
+!    	close(1)
+!    	close(2)
+!	endif
+      
+    	return
+	end
+
+!hw***************************************************************************************
+	subroutine convt_At_rmp
+	use declare
+!	implicit none
+	real*8, dimension(mxt,mzt,3) :: wsy1,wsy2
+	integer, parameter :: mxzt=mxt*mzt
+      include 'mpif.h'
+!  d1fc= d f / dx  with fourth-order accuracy central difference
+      d1fc(fm2,fm1,f0,fp1,fp2,a,b,c,d)= &
+       a*(fp1-f0)+b*(f0-fm1)+c*(fp2-f0)+d*(f0-fm2)
+!  d1fp= d f / dx  with  one-sided  difference involving 0  1 2 and 3
+!  points
+      d1fp(fp3,fp2,fp1,f0,a,b,c)= &
+       a*(fp1-f0)+b*(fp2-f0)+c*(fp3-f0)
+!  d1fm= d f / dx  with one-sided difference involving -3 -2 -1 and 0
+!  points
+      d1fm(fm3,fm2,fm1,f0,a,b,c)= &
+       a*(f0-fm1)+b*(f0-fm2)+c*(f0-fm3)
+!  d1fbp= d f / dx  with  one-sided-bias  difference involving -1 0  1 and 2
+!  points
+      d1fbp(fp2,fp1,f0,fm1,a,b,c)= &
+       a*(fm1-f0)+b*(fp1-f0)+c*(fp2-f0)
+!  d1fbm= d f / dx  with  one-sided-bias  difference involving -2 -1  0 and 1
+!  points
+      d1fbm(fm2,fm1,f0,fp1,a,b,c)= &
+       a*(f0-fp1)+b*(f0-fm1)+c*(f0-fm2)
+
+	do 1 m=1,3
+
+	do 2 jy=iy_first,iy_last
+	do 2 jz=1,mzt
+
+	do jx=3,mxt-2
+	dAx_rmp(jx,jz,jy,m)=d1fc(At_rmp(jx-2,jz,jy,m),At_rmp(jx-1,jz,jy,m),At_rmp(jx,jz,jy,m),&
+		  At_rmp(jx+1,jz,jy,m),At_rmp(jx+2,jz,jy,m),axt1(jx),bxt1(jx),cxt1(jx),dxt1(jx))
+	enddo
+
+	dAx_rmp(1,jz,jy,m)=d1fp(At_rmp(4,jz,jy,m),At_rmp(3,jz,jy,m),At_rmp(2,jz,jy,m),&
+		  At_rmp(1,jz,jy,m),axtp(1),bxtp(1),cxtp(1))
+	dAx_rmp(mxt,jz,jy,m)=d1fm(At_rmp(mxt-3,jz,jy,m),At_rmp(mxt-2,jz,jy,m),At_rmp(mxt-1,jz,jy,m),&
+		  At_rmp(mxt,jz,jy,m),axtm(mxt),bxtm(mxt),cxtm(mxt))
+	dAx_rmp(2,jz,jy,m)=d1fbp(At_rmp(4,jz,jy,m),At_rmp(3,jz,jy,m),At_rmp(2,jz,jy,m),&
+		  At_rmp(1,jz,jy,m),axtbp(2),bxtbp(2),cxtbp(2))
+	dAx_rmp(mxt-1,jz,jy,m)=d1fbm(At_rmp(mxt-3,jz,jy,m),At_rmp(mxt-2,jz,jy,m),At_rmp(mxt-1,jz,jy,m),&
+		  At_rmp(mxt,jz,jy,m),axtbm(mxt-1),bxtbm(mxt-1),cxtbm(mxt-1))
+
+    2 continue
+
+    	do 3 jy=iy_first,iy_last
+	do 3 jx=1,mzt
+
+	do jz=3,mzt-2
+	dAz_rmp(jx,jz,jy,m)=d1fc(At_rmp(jx,jz-2,jy,m),At_rmp(jx,jz-1,jy,m),At_rmp(jx,jz,jy,m),&
+		  At_rmp(jx,jz+1,jy,m),At_rmp(jx,jz+2,jy,m),azt1(jz),bzt1(jz),czt1(jz),dzt1(jz))
+	enddo
+
+	dAz_rmp(jx,1,jy,m)=d1fp(At_rmp(jx,4,jy,m),At_rmp(jx,3,jy,m),At_rmp(jx,2,jy,m),&
+		  At_rmp(jx,1,jy,m),aztp(1),bztp(1),cztp(1))
+	dAz_rmp(jx,mzt,jy,m)=d1fm(At_rmp(jx,mzt-3,jy,m),At_rmp(jx,mzt-2,jy,m),At_rmp(jx,mzt-1,jy,m),&
+		  At_rmp(jx,mzt,jy,m),aztm(mzt),bztm(mzt),cztm(mzt))
+	dAz_rmp(jx,2,jy,m)=d1fbp(At_rmp(jx,4,jy,m),At_rmp(jx,3,jy,m),At_rmp(jx,2,jy,m),&
+		  At_rmp(jx,1,jy,m),aztbp(2),bztbp(2),cztbp(2))
+	dAz_rmp(jx,mzt-1,jy,m)=d1fbm(At_rmp(jx,mzt-3,jy,m),At_rmp(jx,mzt-2,jy,m),At_rmp(jx,mzt-1,jy,m),&
+		  At_rmp(jx,mzt,jy,m),aztbm(mzt-1),bztbm(mzt-1),cztbm(mzt-1))
+
+    3 continue
+
+	do 4 jz=1,mzt
+	do 4 jx=1,mxt
+
+	do jy=iy_first+2,iy_last-2
+	dAy_rmp(jx,jz,jy,m)=d1fc(At_rmp(jx,jz,jy-2,m),At_rmp(jx,jz,jy-1,m),At_rmp(jx,jz,jy,m),&
+		  At_rmp(jx,jz,jy+1,m),At_rmp(jx,jz,jy+2,m),ay1(jy),by1(jy),cy1(jy),dy1(jy))
+	enddo
+ 
+    4 continue
+
+    1 continue
 
 
 
+! send the dAy_rmp to nearest cpu
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      if(npry .gt. 1) then
+	if (nrky(nrank).lt. npry-1) then
+      wsy1(:,:,:)=dAy_rmp(:,:,iy_last-2,:)
+      wsy2(:,:,:)=dAy_rmp(:,:,iy_last-3,:)
+!mpi   ----------------------------------------------------------------
+	call mpi_send( wsy1, mxzt*3, mpi_double_precision, nrank + nprxz, 0,  &
+		      mpi_comm_world,ierror )
+	call mpi_send( wsy2, mxzt*3, mpi_double_precision, nrank + nprxz, 0,  &
+		      mpi_comm_world,ierror )
+!mpi   ----------------------------------------------------------------
+	endif
+	if (nrky(nrank) .ge. 1 )  then
+!mpi   ----------------------------------------------------------------
+	call mpi_recv( wsy1, mxzt*3, mpi_double_precision, nrank - nprxz, 0,  &
+		      mpi_comm_world, status,ierror )
+	call mpi_recv( wsy2, mxzt*3, mpi_double_precision, nrank - nprxz, 0,  &
+		      mpi_comm_world, status,ierror )
+!mpi   ----------------------------------------------------------------
+      dAy_rmp(:,:,iy_first+1,:)=wsy1(:,:,:)
+      dAy_rmp(:,:,iy_first,:)=wsy2(:,:,:)
+	endif
+
+
+  	if (nrky(nrank).eq. npry-1) then
+      wsy1(:,:,:)=dAy_rmp(:,:,iy_last-2,:)
+      wsy2(:,:,:)=dAy_rmp(:,:,iy_last-3,:)
+!mpi   ----------------------------------------------------------------
+	call mpi_send( wsy1, mxzt*3, mpi_double_precision, nrank -(npry-1)*nprxz, 0,  &
+		      mpi_comm_world,ierror )
+	call mpi_send( wsy2, mxzt*3, mpi_double_precision, nrank -(npry-1)*nprxz, 0,  &
+		      mpi_comm_world,ierror )
+!mpi   ----------------------------------------------------------------
+	endif
+	if (nrky(nrank) .eq. 0 )  then
+!mpi   ----------------------------------------------------------------
+	call mpi_recv( wsy1, mxzt*3, mpi_double_precision, nrank +(npry-1)*nprxz, 0,  &
+		      mpi_comm_world, status,ierror )
+	call mpi_recv( wsy2, mxzt*3, mpi_double_precision, nrank +(npry-1)*nprxz, 0,  &
+		      mpi_comm_world, status,ierror )
+!mpi   ----------------------------------------------------------------
+      dAy_rmp(:,:,iy_first+1,:)=wsy1(:,:,:)
+      dAy_rmp(:,:,iy_first,:)=wsy2(:,:,:)
+	endif
+	     
+! send w8 down unless i'm at the bottom
+
+      
+	if (nrky(nrank) .ge. 1 ) then
+      wsy1(:,:,:)=dAy_rmp(:,:,iy_first+2,:)
+      wsy2(:,:,:)=dAy_rmp(:,:,iy_first+3,:)
+!mpi   ----------------------------------------------------------------
+	call mpi_send( wsy1, mxzt*3, mpi_double_precision, nrank - nprxz, 1,  &
+		      mpi_comm_world,ierror )
+	call mpi_send( wsy2, mxzt*3, mpi_double_precision, nrank - nprxz, 1,  &
+		      mpi_comm_world,ierror )
+!mpi   ----------------------------------------------------------------
+	endif
+		      
+	if (nrky(nrank).lt. npry-1) then
+!mpi   ----------------------------------------------------------------
+	call mpi_recv( wsy1, mxzt*3, mpi_double_precision, nrank + nprxz, 1,  &
+		      mpi_comm_world, status,ierror )
+	call mpi_recv( wsy2, mxzt*3, mpi_double_precision, nrank + nprxz, 1,  &
+		      mpi_comm_world, status,ierror )
+!mpi   ----------------------------------------------------------------
+      dAy_rmp(:,:,iy_last-1,:)=wsy1(:,:,:)
+      dAy_rmp(:,:,iy_last,:)=wsy2(:,:,:)
+	endif
+
+    if (nrky(nrank) .eq. 0 ) then
+      wsy1(:,:,:)=dAy_rmp(:,:,iy_first+2,:)
+      wsy2(:,:,:)=dAy_rmp(:,:,iy_first+3,:)
+!mpi   ----------------------------------------------------------------
+	call mpi_send( wsy1, mxzt*3, mpi_double_precision, nrank +(npry-1)*nprxz, 1,  &
+		      mpi_comm_world,ierror )
+	call mpi_send( wsy2, mxzt*3, mpi_double_precision, nrank +(npry-1)*nprxz, 1,  &
+		      mpi_comm_world,ierror )
+!mpi   ----------------------------------------------------------------
+	endif
+		      
+	if (nrky(nrank).eq. npry-1) then
+!mpi   ----------------------------------------------------------------
+	call mpi_recv( wsy1, mxzt*3, mpi_double_precision, nrank -(npry-1)*nprxz, 1,  &
+		      mpi_comm_world, status,ierror )
+	call mpi_recv( wsy2, mxzt*3, mpi_double_precision, nrank -(npry-1)*nprxz, 1,  &
+		      mpi_comm_world, status,ierror )
+!mpi   ----------------------------------------------------------------
+      dAy_rmp(:,:,iy_last-1,:)=wsy1(:,:,:)
+      dAy_rmp(:,:,iy_last,:)=wsy2(:,:,:)
+	endif
+      else
+      dAy_rmp(:,:,iy_first+1,:)=dAy_rmp(:,:,iy_last-2,:)
+      dAy_rmp(:,:,iy_first,:)=dAy_rmp(:,:,iy_last-3,:)
+      dAy_rmp(:,:,iy_last-1,:)=dAy_rmp(:,:,iy_first+2,:)
+      dAy_rmp(:,:,iy_last,:)=dAy_rmp(:,:,iy_first+3,:)
+      endif
+
+	return
+	end
 
 
 
+!***********************************************************************************
+	subroutine map_Bt_rmp_to_bnd_grd
+	use declare
+      integer, parameter :: nq = 33
+      integer, parameter :: nr = 150 !int( sqrt(ndat/3) )
+!      integer, parameter :: nr = int( sqrt(ndata*1./3.) )
+      integer, parameter :: nw = 39
+    !
+      integer lcell(nr,nr)
+      integer lnext(ndata),lnext12(ndat12),lnext34(ndat34)
+      real*8 risq(ndata),risq12(ndat12),risq34(ndat34)
+      real*8 aw(5,ndata),aw12(5,ndat12),aw34(5,ndat34)
+      real*8 rimax,ximin,zimin,dxi,dzi
+!      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
+!      real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
+!	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+!      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
+!      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
+!      integer icell(1,1)
+!      integer inext(9)
+!      real*8 xin(9),zin(9),qin(9),rinsq(9),ain(5,9)
+!       real*8 xout,zout,qout,qdxout,qdzout
+       integer iam,iap, itag
+	 integer ier
+
+	 real*8, dimension(ndata) :: tmp_int, xx_int, zz_int
+	 real*8, dimension(nbndx) :: tmp_bndx_out1, tmp_bndx_out2, tmp_bndx_out3
+	 real*8, dimension(nbndz) :: tmp_bndz_out1, tmp_bndz_out2, tmp_bndz_out3
+	 real*8, dimension(mxt,mzt) :: xxt2d, zzt2d
+      include 'mpif.h'
+!  d1fc= d f / dx  with fourth-order accuracy central difference
+      d1fc(fm2,fm1,f0,fp1,fp2,a,b,c,d)= &
+       a*(fp1-f0)+b*(f0-fm1)+c*(fp2-f0)+d*(f0-fm2)   
+	
+	allocate(b_rmp_bndx(nbndx,my,3))
+	allocate(b_rmp_bndz(nbndz,my,3))
+	b_rmp_bndx(:,:,:)=0.
+	b_rmp_bndz(:,:,:)=0.
+
+! interpolation, input ndata, xx_int, zz_int, f_int, 
+! output f(jx,jz), and its x & z directional derivatives at xxt and zzt grids.
+	if(firstmap) then
+
+	do jx=1,mxt
+	do jz=1,mzt
+	xxt2d(jx,jz)=xxt(jx)
+	zzt2d(jx,jz)=zzt(jz)
+	enddo
+	enddo
+
+	xx_int=reshape(xxt2d, [ndata])
+	zz_int=reshape(zzt2d, [ndata])
+
+	do 1 jy=iy_first,iy_last
+	do 1 m=1,3
+	tmp_int(:)=reshape(Bt_rmp(:,:,jy,m), [ndata])
+
+      call qshep2 ( ndata, xx_int, zz_int, tmp_int, nq, nw, nr, lcell, lnext, ximin, zimin, &
+        dxi, dzi, rimax, risq, aw, ier )
+      do jx=1,nbndx
+      call qs2grd ( bndx_grd(jx,1), bndx_grd(jx,2), ndata, xx_int, zz_int, tmp_int, nr, lcell, lnext, ximin, &
+        zimin, dxi, dzi, rimax, risq, aw, tmp_bndx_out1(jx), tmp_bndx_out2(jx), tmp_bndx_out3(jx), ier )
+      write(*,*) 'itag=', itag, 'jx=', jx, ier
+      enddo
+      do jz=1,nbndz
+      call qs2grd ( bndz_grd(jz,1), bndz_grd(jz,2), ndata, xx_int, zz_int, tmp_int, nr, lcell, lnext, ximin, &
+        zimin, dxi, dzi, rimax, risq, aw, tmp_bndz_out1(jz), tmp_bndz_out2(jz), tmp_bndz_out3(jz), ier )
+      write(*,*) 'itag=', itag, 'jz=', jz, ier
+      enddo
+
+	b_rmp_bndx(:,jy,m)=tmp_bndx_out1(:)
+	b_rmp_bndz(:,jy,m)=tmp_bndz_out1(:)
+
+    1 continue
+    	endif
+
+!   	x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)
+!   	x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)
+
+
+	if(nrank.eq.0) then
+	open(unit=1,file='bx_rmp_bndz.dat',status='unknown',form='formatted')
+	open(unit=2,file='bx_rmp_bndx.dat',status='unknown',form='formatted')
+	write(1,3) ((bndz_grd(jx,1),bndz_grd(jx,2),b_rmp_bndz(jx,3,1)),jx=1,nbndz)
+	write(2,3) ((bndx_grd(jx,1),bndx_grd(jx,2),b_rmp_bndx(jx,3,1)),jx=1,nbndx)
+    3 format(3(1x,e12.5))
+    	close(1)
+    	close(2)
+	endif
     	
-
-
-
-
-
+    	return
+	end
 
 
 
