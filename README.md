@@ -56,9 +56,9 @@ tokamak MHD instablity simulations.
     * **thst(n2th+5): theta coordinates in (theta,psi) grid;**
     * **tpst(n2th+5,npsi): r.z.<->s(psi).p(pol). transit angle in (theta,psi); tps(n2th+5,mps4:mps) for bndry;**
 
-## Term of use
+## Terms of use
 1. CLT is a young but powerful scientific code, and we welcome peers around the world to use and improve this code.
-2. Before you start to use this CLT code, please inform us emailing Zhang, Haowei at changhw@zju.edu.cn and Prof. Ma, Zhiwei at zwma@zju.edu.cn so that we can show you how to use this code in detail.
+2. Before you start to use this CLT code, please inform us by emailing Zhang, Haowei at changhw@zju.edu.cn and Prof. Ma, Zhiwei at zwma@zju.edu.cn so that we can show you how to use this code in detail.
 3. If you want to modificate the CLT source code, or publish paper with any results calculated by CLT, please inform us by emailing Zhang, Haowei and Prof. Ma, Zhiwei, and we can help to check the modification or the result before we go to the next step.
 4. Thank you for your cooperation!
 
