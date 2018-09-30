@@ -23339,6 +23339,7 @@ end subroutine uptri
       xr(jx,jz,jy,m)=xint_dx(jx,jz,m)+x1r(jx,jz,jy,m)  
       xz(jx,jz,jy,m)=xint_dz(jx,jz,m)+x1z(jx,jz,jy,m)
 
+
    21 continue
    30 continue
 
@@ -24682,10 +24683,10 @@ end subroutine uptri
 
 	if(f_type.eq.1) then ! for x1
 !      call mpi_transfersm(x1(:,:,:,:),8) 
-      call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+      call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
 	else if(f_type.eq.2) then ! for ef
 !	call mpi_transfersm(ef(:,:,:,:),3)
-      call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+      call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
 	endif
 
 	enddo
@@ -24730,7 +24731,7 @@ end subroutine uptri
 	difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))	
 	x1(jx,jz,jy,m)=x1(jx,jz,jy,m)+difc_tmp*(wdifcx(jx,jz)+wdifcz(jx,jz))
     1 continue
-      call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+      call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
 	enddo
 
 	else if(f_type.eq.2) then ! for ef
@@ -24755,7 +24756,7 @@ end subroutine uptri
 	difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))	
 	ef(jx,jz,jy,m)=ef(jx,jz,jy,m)+difc_tmp*(wdifcx(jx,jz)+wdifcz(jx,jz))
     2 continue
-      call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+      call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
     enddo
 	endif
 
@@ -24787,12 +24788,12 @@ end subroutine uptri
 ! that is gdtp_ep(jx,jz,4)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
 !	if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
 	if(f_type.eq.1) then ! for x1
-	wdix(:,1:8)=2.*((x1(jx+1,jz,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-xx(jx-1)) &
-		  -(x1(jx,jz,:,1:8)-x1(jx-1,jz,:,1:8))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
+	wdix(:,ms:me)=2.*((x1(jx+1,jz,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+		  -(x1(jx,jz,:,ms:me)-x1(jx-1,jz,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
 !	wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
 	else if(f_type.eq.2) then ! for ef
-	wdix(:,1:3)=2.*((ef(jx+1,jz,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-xx(jx-1)) &
-		  -(ef(jx,jz,:,1:3)-ef(jx-1,jz,:,1:3))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
+	wdix(:,ms:me)=2.*((ef(jx+1,jz,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+		  -(ef(jx,jz,:,ms:me)-ef(jx-1,jz,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
 !	wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
 	endif
 !	endif
@@ -24802,12 +24803,12 @@ end subroutine uptri
 	itag=gdtp_ep(jx,jz,6)
 
 	if(f_type.eq.1) then ! for x1
-	wdix(:,1:8)=2.*((x1_8bndz(itag,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-xx(jx-1)) &
-		  -(x1(jx,jz,:,1:8)-x1(jx-1,jz,:,1:8))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
+	wdix(:,ms:me)=2.*((x1_8bndz(itag,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+		  -(x1(jx,jz,:,ms:me)-x1(jx-1,jz,:,ms:me))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
 !	wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1_8bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
 	else if(f_type.eq.2) then ! for ef
-	wdix(:,1:3)=2.*((ef_3bndz(itag,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-xx(jx-1)) &
-		  -(ef(jx,jz,:,1:3)-ef(jx-1,jz,:,1:3))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
+	wdix(:,ms:me)=2.*((ef_3bndz(itag,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+		  -(ef(jx,jz,:,ms:me)-ef(jx-1,jz,:,ms:me))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
 !	wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef_3bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
 	endif
 
@@ -24815,12 +24816,12 @@ end subroutine uptri
 	itag=gdtp_ep(jx,jz,6)
 
 	if(f_type.eq.1) then ! for x1
-	wdix(:,1:8)=2.*((x1(jx+1,jz,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-bndz_grd(itag,1)) &
-		  -(x1(jx,jz,:,1:8)-x1_8bndz(itag,:,1:8))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
+	wdix(:,ms:me)=2.*((x1(jx+1,jz,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-bndz_grd(itag,1)) &
+		  -(x1(jx,jz,:,ms:me)-x1_8bndz(itag,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
 !	wdifcx(jx,jz)=difc(x1_8bndz(itag,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
 	else if(f_type.eq.2) then ! for ef
-	wdix(:,1:3)=2.*((ef(jx+1,jz,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-bndz_grd(itag,1)) &
-		  -(ef(jx,jz,:,1:3)-ef_3bndz(itag,:,1:3))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
+	wdix(:,ms:me)=2.*((ef(jx+1,jz,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-bndz_grd(itag,1)) &
+		  -(ef(jx,jz,:,ms:me)-ef_3bndz(itag,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
 !	wdifcx(jx,jz)=difc(ef_3bndz(itag,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
 	endif
 
@@ -24831,12 +24832,12 @@ end subroutine uptri
 ! that is gdtp_ep(jx,jz,1)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
 !	if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
 	if(f_type.eq.1) then ! for x1
-	wdiz(:,1:8)=2.*((x1(jx,jz+1,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-zz(jz-1)) &
-		  -(x1(jx,jz,:,1:8)-x1(jx,jz-1,:,1:8))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
+	wdiz(:,ms:me)=2.*((x1(jx,jz+1,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+		  -(x1(jx,jz,:,ms:me)-x1(jx,jz-1,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
 !	wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
 	else if(f_type.eq.2) then ! for ef
-	wdiz(:,1:3)=2.*((ef(jx,jz+1,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-zz(jz-1)) &
-		  -(ef(jx,jz,:,1:3)-ef(jx,jz-1,:,1:3))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
+	wdiz(:,ms:me)=2.*((ef(jx,jz+1,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+		  -(ef(jx,jz,:,ms:me)-ef(jx,jz-1,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
 !	wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
 	endif
 !	endif
@@ -24846,12 +24847,12 @@ end subroutine uptri
 	itag=gdtp_ep(jx,jz,3)
 
 	if(f_type.eq.1) then ! for x1
-	wdiz(:,1:8)=2.*((x1_8bndx(itag,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-zz(jz-1)) &
-		  -(x1(jx,jz,:,1:8)-x1(jx,jz-1,:,1:8))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
+	wdiz(:,ms:me)=2.*((x1_8bndx(itag,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+		  -(x1(jx,jz,:,ms:me)-x1(jx,jz-1,:,ms:me))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
 !	wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1_8bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
 	else if(f_type.eq.2) then ! for ef
-	wdiz(:,1:3)=2.*((ef_3bndx(itag,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-zz(jz-1)) &
-		  -(ef(jx,jz,:,1:3)-ef(jx,jz-1,:,1:3))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
+	wdiz(:,ms:me)=2.*((ef_3bndx(itag,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+		  -(ef(jx,jz,:,ms:me)-ef(jx,jz-1,:,ms:me))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
 !	wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef_3bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
 	endif
 
@@ -24859,12 +24860,12 @@ end subroutine uptri
 	itag=gdtp_ep(jx,jz,3)
 
 	if(f_type.eq.1) then ! for x1
-	wdiz(:,1:8)=2.*((x1(jx,jz+1,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-bndx_grd(itag,2)) &
-		  -(x1(jx,jz,:,1:8)-x1_8bndx(itag,:,1:8))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
+	wdiz(:,ms:me)=2.*((x1(jx,jz+1,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-bndx_grd(itag,2)) &
+		  -(x1(jx,jz,:,ms:me)-x1_8bndx(itag,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
 !	wdifcz(jx,jz)=difc(x1_8bndx(itag,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
 	else if(f_type.eq.2) then ! for ef
-	wdiz(:,1:3)=2.*((ef(jx,jz+1,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-bndx_grd(itag,2)) &
-		  -(ef(jx,jz,:,1:3)-ef_3bndx(itag,:,1:3))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
+	wdiz(:,ms:me)=2.*((ef(jx,jz+1,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-bndx_grd(itag,2)) &
+		  -(ef(jx,jz,:,ms:me)-ef_3bndx(itag,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
 !	wdifcz(jx,jz)=difc(ef_3bndx(itag,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
 	endif
 
@@ -24875,9 +24876,9 @@ end subroutine uptri
 
 	difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))	
 	if(f_type.eq.1) then ! for x1
-	x1(jx,jz,:,1:8)=x1(jx,jz,:,1:8)+difc_tmp*(wdix(:,1:8)+wdiz(:,1:8))
+	x1(jx,jz,:,ms:me)=x1(jx,jz,:,ms:me)+difc_tmp*(wdix(:,ms:me)+wdiz(:,ms:me))
 	else if(f_type.eq.2) then ! for ef
-	ef(jx,jz,:,1:3)=ef(jx,jz,:,1:3)+difc_tmp*(wdix(:,1:3)+wdiz(:,1:3))
+	ef(jx,jz,:,ms:me)=ef(jx,jz,:,ms:me)+difc_tmp*(wdix(:,ms:me)+wdiz(:,ms:me))
 	endif
 
 	endif
@@ -24885,10 +24886,10 @@ end subroutine uptri
 
 	if(f_type.eq.1) then ! for x1
 !      call mpi_transfersm(x1(:,:,:,:),8) 
-      call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+      call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
 	else if(f_type.eq.2) then ! for ef
 !	call mpi_transfersm(ef(:,:,:,:),3)
-      call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+      call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
 	endif
 
 	enddo

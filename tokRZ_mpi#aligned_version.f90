@@ -40,12 +40,12 @@ end module declare_parameter
 ! hw**************************************************************************
 module bnd_grd_set
     use declare_parameter
-    !	integer, parameter :: nxzs=n2th+5, n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
-    !	integer, parameter :: nxzs=100*(n2th+5), n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
+    !    integer, parameter :: nxzs=n2th+5, n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
+    !    integer, parameter :: nxzs=100*(n2th+5), n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
     logical use_stepon_cut_cell
     integer nxzs
     integer, parameter :: n7=7, mpsa5=5, m2xt=2*mxt, m2zt=2*mzt, m2x=2*mx, m2z=2*mz
-    !	real*8, parameter :: zzero=0.d0
+    !    real*8, parameter :: zzero=0.d0
     real*8, parameter :: grd_type_ratio=0.5d0
     real*8, dimension(m2xt,n7) :: bnd_x
     real*8, dimension(m2zt,n7) :: bnd_z
@@ -55,9 +55,9 @@ module bnd_grd_set
     real*8, dimension(m2zt) :: bnd_tmpz
     real*8, dimension(m2x) :: bnd_tmpx_ep
     real*8, dimension(m2z) :: bnd_tmpz_ep
-    !	real*8, dimension(nxzs,mpsa5) :: xxs5, zzs5
+    !    real*8, dimension(nxzs,mpsa5) :: xxs5, zzs5
     real*8, allocatable :: xxs5(:,:), zzs5(:,:)
-    !	real*8, dimension(nxzs) :: theta, theta_tmp, xb, zb
+    !    real*8, dimension(nxzs) :: theta, theta_tmp, xb, zb
     real*8, allocatable :: theta(:), theta_tmp(:), xb(:), zb(:)
     ! frd_type 1-5 means regualr, irregular, boundary, dropped(outside). dropped(inside) 
     ! for bndx in z direction or for bndz in x direction
@@ -82,8 +82,8 @@ module bnd_grd_set
     ! 4: same as 1 but is for bndz in x direction
     ! 5: same as 2 but is for bndz in x direction
     ! 6: same as 3 but is for bndz in x direction
-    !gdtp_ep(:,:,1-3): grd_type(:,:,1) and gdtp_bndx(:,:,1-2)	
-    !gdtp_ep(:,:,4-6): grd_type(:,:,2) and gdtp_bndz(:,:,1-2)	
+    !gdtp_ep(:,:,1-3): grd_type(:,:,1) and gdtp_bndx(:,:,1-2)    
+    !gdtp_ep(:,:,4-6): grd_type(:,:,2) and gdtp_bndz(:,:,1-2)    
     ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     integer, dimension(mx,mz,6) :: gdtp_ep ! the grid type for each point in every processor
     ! hypb_ratio is the damping coefficient for the points, it is equal to 0
@@ -325,7 +325,7 @@ module declare
     uxdx, uxdz, uydx,uydz, uzdx, uzdz, bpol
     real*8, dimension(mxt,mzt) :: pt,ptdx,ptdz,rh,rhdx,rhdz
     real*8, dimension(mx,mz,my) :: bx_rmp, by_rmp, bz_rmp
-    !	real*8, dimension(mxt,mzt,myt) :: Ax_rmp, Ay_rmp, Az_rmp
+    !    real*8, dimension(mxt,mzt,myt) :: Ax_rmp, Ay_rmp, Az_rmp
     real*8, dimension(mx,mz,my,3) :: b_rmp
     real*8, dimension(mx,mz,my,3) :: b_rmp_out
     real*8, dimension(mx,mz,my,3) :: b_rmp_in, b_rmp_tmp1, b_rmp_tmp2
@@ -488,15 +488,15 @@ program tokrz
     if(use_stepon_cut_cell) then
         
         call find_bnd_grd
-        !	call find_bnd_grd_in_each_proc
-        !    	call map_nova_to_bnd_grd
+        !    call find_bnd_grd_in_each_proc
+        !        call map_nova_to_bnd_grd
         call map_int_to_bnd_grd
-        !    	call map_nova_to_bnd_grd_in_each_proc
+        !        call map_nova_to_bnd_grd_in_each_proc
         call find_ir_pnt_bndx
         call find_ir_pnt_bndz
         call decide_grd_type_in_each_proc
         call calculate_dnfm_coeff_for_ir_bndx_point
-        !	call decide_hyperbolic_ratio
+        !    call decide_hyperbolic_ratio
         call decide_hyperbolic_ratio_v2
         call data_type_weight
         call jx_jz_list_bndry8_cut_cell_v2_fixed
@@ -527,7 +527,7 @@ program tokrz
     endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
-    !	if(rmp_east) call rmp_east_pert
+    !    if(rmp_east) call rmp_east_pert
     if(rmp_east) call rmp_east_pert_withA
     
     
@@ -540,13 +540,13 @@ program tokrz
     
     do jz=iz_first,iz_last
         do jx=ix_first,ix_last
-            !	if(psi(jx,jz).lt.psia1) then ! keep the diffusion term cofficient only in closed flux, haowei, 20180402
+            !    if(psi(jx,jz).lt.psia1) then ! keep the diffusion term cofficient only in closed flux, haowei, 20180402
             if(gdtp_ep(jx,jz,1).ne.4) then
                 cfsmb(jx,jz)=cfsm0+0.5*cfsmout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))
                 etaint(jx,jz)=eta0 !*(1+(etacut-1)*tanh((tmint(jx,jz)/tm00)**(-1.5)/(etacut-1)))
                 eta(jx,jz,:)=etaint(jx,jz)
                 
-                !	  if(psi(jx,jz).gt.psia1) eta(jx,jz,:)=1.d-3
+                !      if(psi(jx,jz).gt.psia1) eta(jx,jz,:)=1.d-3
                 
                 fmu(jx,jz)=fmu0+0.5*fmuout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))+fmuc*(1-tanh((psi(jx,jz)-psmin)/pstransw**0.5))
                 pmu(jx,jz)=pmu0+0.5*pmuout*(1+tanh((psi(jx,jz)-pstrans)/pstransw))+pmuc*(1-tanh((psi(jx,jz)-psmin)/pstransw**0.5))
@@ -703,7 +703,7 @@ program tokrz
         allocate(b_rmp_bndx_tmp2(nbndx,my,3))
         allocate(b_rmp_bndz_tmp2(nbndz,my,3))
         
-        ! nrmp=1, shifted pi/2 between b_tmp1 and b_tmp2		  	
+        ! nrmp=1, shifted pi/2 between b_tmp1 and b_tmp2              
         b_rmp_tmp1=b_rmp_out
         b_rmp_tmp2(:,:,1:myt*3/4+1,:)=b_rmp_out(:,:,myt/4+1:myt+1,:)
         b_rmp_tmp2(:,:,myt*3/4+2:myt,:)=b_rmp_out(:,:,2:myt/4,:)
@@ -722,7 +722,7 @@ program tokrz
         omega_rmp=0.d0
         start_rmp=0.d0
         finish_rmp=800.d0
-        !	time_old=start_rmp
+        !    time_old=start_rmp
         tau_rmp=10.d0
     endif
     100 continue
@@ -730,8 +730,8 @@ program tokrz
     ! updated the rotation model 0601, haowei
     if(rmp_east) then ! open the rmp after 160tA
         
-        !	ft_rmp(1)=1.d0-exp(-max(0.d0,time-dt-start_rmp)/tau_rmp) ! the old time
-        !	ft_rmp(2)=1.d0-exp(-max(0.d0,time-start_rmp)/tau_rmp) ! the new time
+        !    ft_rmp(1)=1.d0-exp(-max(0.d0,time-dt-start_rmp)/tau_rmp) ! the old time
+        !    ft_rmp(2)=1.d0-exp(-max(0.d0,time-start_rmp)/tau_rmp) ! the new time
         
         if(time.lt.finish_rmp) then
             ft_rmp(1)=1.d0*max(0.d0,min(time-dt-start_rmp,tau_rmp))/tau_rmp ! the old time
@@ -891,7 +891,7 @@ subroutine input
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! use the cut_cell method for boundary conditions
     use_stepon_cut_cell=.false.
-    ! read the equilibrium from pfile and gfile form kinetic-eift	
+    ! read the equilibrium from pfile and gfile form kinetic-eift    
     ! if this is ture, use_stepon_cut_cell must be true
     initia_from_pgfile=.false.
     if(initia_from_pgfile) use_stepon_cut_cell=.true.
@@ -1806,7 +1806,7 @@ subroutine initia
     !      cyt2(jy)=2.*h3*(f2*g3-f3*g2)/ca1
     !      dyt2(jy)=-(dyp1*ayt2(jy)+dym1*byt2(jy) &
     !         +dyp2*cyt2(jy))/dym2
-    ! 	enddo
+    !     enddo
     
     do 32 jy=iy_first+2,iy_last-2
     !      do 32 jy=1,my
@@ -1852,7 +1852,7 @@ subroutine initia
     !      cyt1(jy)=h3*(f2*g3-f3*g2)/ca1
     !      dyt1(jy)=(dyp1**2*ayt1(jy)-dym1**2*byt1(jy) &
     !         +dyp2**2*cyt1(jy))/dym2**2
-    ! 	enddo
+    !     enddo
     
     amxt0(1)=0.
     bmxt0(1)=-1.e15
@@ -2219,7 +2219,7 @@ subroutine initia
     
     call perturbation
     
-    !	if(rmp_east) call rmp_east_pert
+    !    if(rmp_east) call rmp_east_pert
     
     return
 end
@@ -2273,11 +2273,11 @@ subroutine perturbation
         !       per_vp=-psi0*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dsin(nmode*yy(jy)+mmode*thxz(jx,jz))
         !       x(jx,jz,jy,3)=-per_vp*dsin(thxz(jx,jz))
         !       x(jx,jz,jy,5)=per_vp*dcos(thxz(jx,jz))
-        !	psmode=0.050299150612909
+        !    psmode=0.050299150612909
         eta1(jx,jz,jy)=eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
-        !	psmode=0.262538435913944
+        !    psmode=0.262538435913944
         !      eta1(jx,jz,jy)=eta1(jx,jz,jy)+eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
-        !	psmode=0.494853880167460
+        !    psmode=0.494853880167460
         !      eta1(jx,jz,jy)=eta1(jx,jz,jy)+eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2))*dcos(nmode*yy(jy)+mmode*thxz(jx,jz))
         !      if(rshear) then
         !      eta1(jx,jz,jy)=eta10*(exp(-(psi(jx,jz)-psmode)**2/deltax**2)+exp(-(psi(jx,jz)-ps1mode)**2/deltax**2))*((1+dcos(nmode*yy(jy)+mmode*thxz(jx,jz)))/2)**4
@@ -4102,8 +4102,8 @@ subroutine convtdivb
             !!      endif
             !
             !      call dfftw_plan_dft_c2r_1d(plan,my,spec,data0,fftw_estimate)
-            !	  call dfftw_execute_dft_c2r(plan,spec,data0)
-            !	  call dfftw_destroy_plan(plan)
+            !      call dfftw_execute_dft_c2r(plan,spec,data0)
+            !      call dfftw_destroy_plan(plan)
             !
             !      do 7 jy=1,my
             !      dvb(jx,jz,jy)=data0(jy)
@@ -6375,7 +6375,7 @@ subroutine read_nova
         rst(5+n2th,j)=rst(5,j)
         
         zzst(ipi,j)=0
-        ! to obtain the value at ipi=103, pi, which is missed in nova data	
+        ! to obtain the value at ipi=103, pi, which is missed in nova data    
         call interp1d3l(xxst(ipi-2,j),xxst(ipi-1,j),xxst(ipi+1,j),xxst(ipi+2,j), &
         zzst(ipi-2,j),zzst(ipi-1,j),zzst(ipi+1,j),zzst(ipi+2,j),zzst(ipi,j),xxst(ipi,j))
         call interp1d3l(psst(ipi-2,j),psst(ipi-1,j),psst(ipi+1,j),psst(ipi+2,j), &
@@ -9217,7 +9217,7 @@ subroutine interp_xz2ps(bxz,xi,zi,nx,nz,bps,xs,zs,ns)
     if((zi(iz)-1.d-7).le.zs(is).and.(zi(iz+1)+1.d-7).ge.zs(is)) then
         beta2=(zs(is)-zi(iz))/(zi(iz+1)-zi(iz))
         lz=iz
-        !	stop'2'
+        !    stop'2'
     goto 25
     else
     endif
@@ -9365,7 +9365,7 @@ subroutine extrap_xz2rt(bxz,x0,xi,zi,nx,nz,brt,rh,th,nt)
     if((zi(iz)-1.d-7).le.zl.and.(zi(iz+1)+1.d-7).ge.zl) then
         beta2=(zl-zi(iz))/(zi(iz+1)-zi(iz))
         lz=iz
-        !	stop'2'
+        !    stop'2'
     goto 25
     else
     endif
@@ -9413,7 +9413,7 @@ subroutine extrap2_xz2rt(bxz,x0,xi,zi,nx,nz,brt,brt_dr,brt_dt,rh,th,nt)
     if((zi(iz)-1.d-7).le.zl.and.(zi(iz+1)+1.d-7).ge.zl) then
         beta2=(zl-zi(iz))/(zi(iz+1)-zi(iz))
         lz=iz
-        !	stop'2'
+        !    stop'2'
     goto 25
     else
     endif
@@ -12083,7 +12083,7 @@ subroutine map_xz2st(fxz,fst,mm)
         
         21 continue    
         !!mpi
-        !	write(*,*) nrankxz,js,"map1 done" 
+        !    write(*,*) nrankxz,js,"map1 done" 
         do irecv=1,mrkb
             do isend=1,nsend(irecv,js)
                 if(nrankxz.eq.nranksend(irecv,js,isend) .and. nrankxz.ne.nrkb(irecv)) then
@@ -12105,7 +12105,7 @@ subroutine map_xz2st(fxz,fst,mm)
             enddo
         enddo
         
-        !	write(*,*) nrank,js,"mapsend done" 
+        !    write(*,*) nrank,js,"mapsend done" 
     endif
     
     if(mb_nrk(nrankxz).gt.0) then  
@@ -12121,7 +12121,7 @@ subroutine map_xz2st(fxz,fst,mm)
                 endif
             enddo
         enddo
-        !	write(*,*) nrank,js,"maprecv done" 
+        !    write(*,*) nrank,js,"maprecv done" 
     endif
     
     
@@ -12427,7 +12427,7 @@ subroutine valb8_atlastgrid_r0p1_v2(f8xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=3,6)ibnd==0
         61 continue
@@ -12578,7 +12578,7 @@ subroutine valb8_atlastgrid(f8xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=3,6)ibnd==0
         61 continue
@@ -12726,7 +12726,7 @@ subroutine valb8_atlastgrid_r0p1_v1(f8xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=3,6)ibnd==0
         61 continue
@@ -12861,7 +12861,7 @@ subroutine valb3_atlastgrid(f3xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=1)ibnd==0
         61 continue
@@ -12992,7 +12992,7 @@ subroutine valb3_atlastgrid_r0p1_v1(f3xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=1)ibnd==0
         61 continue
@@ -13124,7 +13124,7 @@ subroutine valb3_atlastgrid_r1p0_v1(f3xz)
             !      call smth_ps_nrk(fst(itbmin(nrankxz):itbmax(nrankxz),is,:,:),itbmax(nrankxz)-itbmin(nrankxz)+1,3)
             !ws_smps--------------------
             call smth_st_nrk(fst(:,:,:,m),is,1,3)
-            !	write(*,*) nrankxz,m,"smth done"
+            !    write(*,*) nrankxz,m,"smth done"
             !ws_smps--------------------
         endif !!(m=2,3)ibnd==0
         61 continue
@@ -13999,7 +13999,7 @@ subroutine diagn_nmmode(fxz,jdg)
         21 continue    
     endif       
     !!mpi
-    !	write(*,*) nrank,jdg,"map1 done" 
+    !    write(*,*) nrank,jdg,"map1 done" 
     
     do ii=1,mrkdgn(jdg)
         ltmin=itdgnmin(nranksend_dgn(ii,jdg),jdg)
@@ -14018,7 +14018,7 @@ subroutine diagn_nmmode(fxz,jdg)
         
     enddo
     
-    !	write(*,*) nrank,js,"mapsend done" 
+    !    write(*,*) nrank,js,"mapsend done" 
     
     !!mpi
     !    2 continue 
@@ -16482,8 +16482,8 @@ subroutine tracelineat(jxl,jzl,jyl,lx,lz,ly,sl,vol)
         jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
         jjy=floor((yyp-yy(iy_first))/dyy)+iy_first      
         !      jjx=jxl+j_add(xxp,xx,mx,jxl)
-        !	  jjz=jzl+j_add(zzp,zz,mz,jzl)
-        !	  jjy=jyl+j_add(yyp,yy,my,jyl)
+        !      jjz=jzl+j_add(zzp,zz,mz,jzl)
+        !      jjy=jyl+j_add(yyp,yy,my,jyl)
         if(jjy.lt.1) jjy=jjy+my
         if(jjy.gt.my)jjy=jjy-my
         !      write(*,*) nrank,'nc',nc,jjy,xxp,jjx,zzp,jjz
@@ -16738,8 +16738,8 @@ subroutine tracelineat2(jxl,jzl,jyl,lx,lz,ly,sl,vol)
         jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
         jjy=floor((yyp-yy(iy_first))/dyy)+iy_first      
         !      jjx=jxl+j_add(xxp,xx,mx,jxl)
-        !	  jjz=jzl+j_add(zzp,zz,mz,jzl)
-        !	  jjy=jyl+j_add(yyp,yy,my,jyl)
+        !      jjz=jzl+j_add(zzp,zz,mz,jzl)
+        !      jjy=jyl+j_add(yyp,yy,my,jyl)
         if(jjy.lt.1) jjy=jjy+myt
         if(jjy.gt.myt)jjy=jjy-myt
         !      write(*,*) nrank,'nc',nc,jjy,xxp,jjx,zzp,jjz
@@ -16788,8 +16788,8 @@ subroutine tracelineat2(jxl,jzl,jyl,lx,lz,ly,sl,vol)
         sl(isgn)=sl(isgn)+(-1)**isgn*sqrt(dx1p**2+dz1p**2+xxp**2*dy1p**2)
         
         !      jjx=jxl+j_add(xxp,xx,mx,jxl)
-        !	  jjz=jzl+j_add(zzp,zz,mz,jzl)
-        !	  jjy=jyl+j_add(yyp,yy,my,jyl)
+        !      jjz=jzl+j_add(zzp,zz,mz,jzl)
+        !      jjy=jyl+j_add(yyp,yy,my,jyl)
         
         jjx=floor((xxp-xx(ix_first))/dxx)+ix_first
         jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
@@ -16897,10 +16897,10 @@ end
 !!      dz1p=xxp0*dy1p*bbb(3)/bbb(2)
 !       if(abs(bbb(1)) .lt. 1.e-7)
 !       dz1p=dx1p*bbb(3)/bbb(1)
-!       dy1p=dx1p*bbb(2)/bbb(1)/xxp0		
-!	!ŒÆËãÇ°œøÒ»²œºóµÄÐÂÎ»ÖÃ
+!       dy1p=dx1p*bbb(2)/bbb(1)/xxp0        
+!    !ŒÆËãÇ°œøÒ»²œºóµÄÐÂÎ»ÖÃ
 !      xxp=xxp0+dx1p
-!	  zzp=zzp0+dz1p
+!      zzp=zzp0+dz1p
 !      yyp=yyp0+dy1p 
 !      if(yyp.gt. 2*pi) yyp=yyp-2*pi
 !      if(yyp.lt. 0) yyp=yyp+2*pi
@@ -16918,8 +16918,8 @@ end
 !!      sl(isgn)=sl(isgn)+(-1)**isgn*sqrt(dx1p**2+dz1p**2+xxp**2*dy1p**2)
 !      
 !      jjx=floor((xxp-xx(ix_first))/dxx)+ix_first
-!	  jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
-!	  jjy=floor((yyp-yy(1))/dyy)+1
+!      jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
+!      jjy=floor((yyp-yy(1))/dyy)+1
 !      if(jjy.lt.1) jjy=jjy+my
 !      if(jjy.gt.my)jjy=jjy-my
 !!      write(*,*) nrank,'nc',nc,jjy,xxp,jjx,zzp,jjz
@@ -16945,21 +16945,21 @@ end
 !
 !      do m=6,8
 !      bbb(m-5)=(volppp*x(jjx,jjz,jjy,m)       +volmpp*x(jjx+1,jjz,jjy,m) &
-!	           +volppm*x(jjx,jjz,jjy+1,m)  +volmpm*x(jjx+1,jjz,jjy+1,m) &
-!	           +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
-!	           +volpmm*x(jjx,jjz+1,jjy+1,m)+volmmm*x(jjx+1,jjz+1,jjy+1,m))/volume
+!               +volppm*x(jjx,jjz,jjy+1,m)  +volmpm*x(jjx+1,jjz,jjy+1,m) &
+!               +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
+!               +volpmm*x(jjx,jjz+1,jjy+1,m)+volmmm*x(jjx+1,jjz+1,jjy+1,m))/volume
 !      enddo
 !
 !
 !      xxp12=xxp0+0.5*dx1p
-!	  zzp12=zzp0+0.5*dz1p
+!      zzp12=zzp0+0.5*dz1p
 !      yyp12=yyp0+0.5*dy1p
 !
 !!      dy1p=dyyp/nline/xxp*xzero
 !!      dx1p=xxp*dy1p*bbb(1)/bbb(2)
 !!      dz1p=xxp*dy1p*bbb(3)/bbb(2)
 !      dz1p=dx1p*bbb(3)/bbb(1)
-!      dy1p=dx1p*bbb(2)/bbb(1)/xxp	
+!      dy1p=dx1p*bbb(2)/bbb(1)/xxp    
 !      
 !      xxp=xxp12+0.5*dx1p
 !      zzp=zzp12+0.5*dz1p
@@ -16970,8 +16970,8 @@ end
 !      sl(isgn)=sl(isgn)+(-1)**isgn*sqrt(dx1p**2+dz1p**2+xxp**2*dy1p**2)
 !      
 !      jjx=floor((xxp-xx(ix_first))/dxx)+ix_first
-!	  jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
-!	  jjy=floor((yyp-yy(1))/dyy)+1
+!      jjz=floor((zzp-zz(iz_first))/dzz)+iz_first   
+!      jjy=floor((yyp-yy(1))/dyy)+1
 !      if(jjy.lt.1) jjy=jjy+my
 !      if(jjy.gt.my)jjy=jjy-my
 !!      write(*,*) nrank,'nc',nc,jjy,xxp,jjx,zzp,jjz
@@ -16997,9 +16997,9 @@ end
 !
 !      do m=6,8
 !      bbb(m-5)=(volppp*x(jjx,jjz,jjy,m)       +volmpp*x(jjx+1,jjz,jjy,m) &
-!	           +volppm*x(jjx,jjz,jjy+1,m)  +volmpm*x(jjx+1,jjz,jjy+1,m) &
-!	           +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
-!	           +volpmm*x(jjx,jjz+1,jjy+1,m)+volmmm*x(jjx+1,jjz+1,jjy+1,m))/volume
+!               +volppm*x(jjx,jjz,jjy+1,m)  +volmpm*x(jjx+1,jjz,jjy+1,m) &
+!               +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
+!               +volpmm*x(jjx,jjz+1,jjy+1,m)+volmmm*x(jjx+1,jjz+1,jjy+1,m))/volume
 !      enddo
 !
 !      xxp0=xxp
@@ -17099,7 +17099,7 @@ subroutine smthp2_traceline(kk)
         enddo
         !       wsm1(jx,jz,jy)=difc(ppp(1),x1(jx,jz,jy,2),ppp(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy))
         !       wsm2(jx,jz,jy)=dif1(ppb(1),pb(jx,jz,jy),ppb(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy))
-        !	wsm(jx,jz,jy)=csmp0all*(wsm1(jx,jz,jy)+wsm2(jx,jz,jy))
+        !    wsm(jx,jz,jy)=csmp0all*(wsm1(jx,jz,jy)+wsm2(jx,jz,jy))
         wsm(jx,jz,jy)=csmp0all*(difc(ppp(1),x1(jx,jz,jy,2),ppp(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy)) &
         +dif1(ppb(1),pb(jx,jz,jy),ppb(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy)))
     endif
@@ -17469,7 +17469,7 @@ subroutine smthp2_traceline_tm(kk)
         enddo
         !       wsm1(jx,jz,jy)=difc(ppp(1),x1(jx,jz,jy,2),ppp(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy))
         !       wsm2(jx,jz,jy)=dif1(ppb(1),pb(jx,jz,jy),ppb(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy))
-        !	wsm(jx,jz,jy)=csmp0all*(wsm1(jx,jz,jy)+wsm2(jx,jz,jy))
+        !    wsm(jx,jz,jy)=csmp0all*(wsm1(jx,jz,jy)+wsm2(jx,jz,jy))
         wsm(jx,jz,jy)=csmp0all*(difc(ppp(1),x1(jx,jz,jy,2),ppp(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy)) &
         +dif1(ppb(1),pb(jx,jz,jy),ppb(2),ssl(1,jx,jz,jy),ssl0,ssl(2,jx,jz,jy)))*x(jx,jz,jy,1)
     endif
@@ -17590,9 +17590,9 @@ subroutine tracelineat_spec1(jxl,jzl,jyl,lx,lz,ly,sl,yypl,area)
         !
         !      do m=6,8
         !      bbb(m-5)=(volppp*x(jjx,jjz,jjy,m)       +volmpp*x(jjx+1,jjz,jjy,m) &
-        !	           +volppm*x(jjx,jjz,jyp(jjy),m)  +volmpm*x(jjx+1,jjz,jyp(jjy),m) &
-        !	           +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
-        !	           +volpmm*x(jjx,jjz+1,jyp(jjy),m)+volmmm*x(jjx+1,jjz+1,jyp(jjy),m))/volume
+        !               +volppm*x(jjx,jjz,jyp(jjy),m)  +volmpm*x(jjx+1,jjz,jyp(jjy),m) &
+        !               +volpmp*x(jjx,jjz+1,jjy,m)     +volmmp*x(jjx+1,jjz+1,jjy,m)&
+        !               +volpmm*x(jjx,jjz+1,jyp(jjy),m)+volmmm*x(jjx+1,jjz+1,jyp(jjy),m))/volume
         !      enddo
         
     enddo
@@ -17687,11 +17687,11 @@ subroutine smthp_traceline_spec(kk)
             enddo
             !      ppp(isgn)=voll(1,isgn,jx,jz,jy)*x(jjx,jjz,jjy,2)  &
             !               +voll(2,isgn,jx,jz,jy)*x(jjx+1,jjz,jjy,2) &
-            !	       +voll(3,isgn,jx,jz,jy)*x(jjx,jjz,jyp(jjy),2) &
+            !           +voll(3,isgn,jx,jz,jy)*x(jjx,jjz,jyp(jjy),2) &
             !               +voll(4,isgn,jx,jz,jy)*x(jjx+1,jjz,jyp(jjy),2) &
-            !	       +voll(5,isgn,jx,jz,jy)*x(jjx,jjz+1,jjy,2) &
+            !           +voll(5,isgn,jx,jz,jy)*x(jjx,jjz+1,jjy,2) &
             !               +voll(6,isgn,jx,jz,jy)*x(jjx+1,jjz+1,jjy,2) &
-            !	       +voll(7,isgn,jx,jz,jy)*x(jjx,jjz+1,jyp(jjy),2) &
+            !           +voll(7,isgn,jx,jz,jy)*x(jjx,jjz+1,jyp(jjy),2) &
             !               +voll(8,isgn,jx,jz,jy)*x(jjx+1,jjz+1,jyp(jjy),2)
         enddo
         csmp=csmp0all*(1-tanh((rr(jx,jz)-0.9)*40))/2.
@@ -17770,11 +17770,11 @@ subroutine smthp1_traceline_spec(kk)
             enddo
             !      ppp(isgn)=voll(1,isgn,jx,jz,jy)*x(jjx,jjz,jjy,2)  &
             !               +voll(2,isgn,jx,jz,jy)*x(jjx+1,jjz,jjy,2) &
-            !	       +voll(3,isgn,jx,jz,jy)*x(jjx,jjz,jyp(jjy),2) &
+            !           +voll(3,isgn,jx,jz,jy)*x(jjx,jjz,jyp(jjy),2) &
             !               +voll(4,isgn,jx,jz,jy)*x(jjx+1,jjz,jyp(jjy),2) &
-            !	       +voll(5,isgn,jx,jz,jy)*x(jjx,jjz+1,jjy,2) &
+            !           +voll(5,isgn,jx,jz,jy)*x(jjx,jjz+1,jjy,2) &
             !               +voll(6,isgn,jx,jz,jy)*x(jjx+1,jjz+1,jjy,2) &
-            !	       +voll(7,isgn,jx,jz,jy)*x(jjx,jjz+1,jyp(jjy),2) &
+            !           +voll(7,isgn,jx,jz,jy)*x(jjx,jjz+1,jyp(jjy),2) &
             !               +voll(8,isgn,jx,jz,jy)*x(jjx+1,jjz+1,jyp(jjy),2)
         enddo
         !      csmp=csmp0all*(1-tanh((rr(jx,jz)-0.9)*40))/2.
@@ -18194,7 +18194,7 @@ subroutine calculate_ps1_mgax
         endif
         !      call mpi_sendrecv(wsz2s,mx*2*my, mpi_double_precision, nrankrecv_zp, kz,  &
         !                        wsz2r,mx*2*my, mpi_double_precision, nranksend_zp, kz,  &
-        !		               mpi_comm_world,status,ierror )
+        !                       mpi_comm_world,status,ierror )
         
         if(nrank==nrank_mgm-kz*nprx) then
             !      write(*,*) 'ws11m',nrank,kz
@@ -18205,7 +18205,7 @@ subroutine calculate_ps1_mgax
         endif
         !      call mpi_sendrecv(wsz2s,mx*2*my, mpi_double_precision, nrankrecv_zm, kz,  &
         !                        wsz2r,mx*2*my, mpi_double_precision, nranksend_zm, kz,  &
-        !		               mpi_comm_world,status,ierror )
+        !                       mpi_comm_world,status,ierror )
         if(nrank==nrank_mgp+(kz+1)*nprx) then
             !      write(*,*) 'ws42',nrank,kz
             call mpi_recv( wsz2 ,2*mx*my, mpi_double_precision,nrank-nprx, kz,  &
@@ -18260,7 +18260,7 @@ subroutine calculate_ps1_mgax
         !      if(nrank==nrank_mgp+kx) wsx2s(:,:,:)=ps1(ix_last-3:ix_last-2,:,1:my)
         !      call mpi_sendrecv(wsx2s,2*mz*my, mpi_double_precision, nrank_mgp+kx+1, kx,  &
         !                        wsx2r,2*mz*my, mpi_double_precision, nrank_mgp+kx, kx,  &
-        !		               mpi_comm_world,status,ierror )
+        !                       mpi_comm_world,status,ierror )
         
         if(nrkx(nrank)==idmgx+kx) then
             call mpi_recv( wsx2r,2*mz*my, mpi_double_precision,nrank-1, kx,  &
@@ -19995,7 +19995,7 @@ subroutine find_bnd_grd
     implicit none
     integer id1,id2,id3,id4,i,j,js
     include 'mpif.h'
-    !	real*8, dimension(:,:), allocatable :: bnd_grd
+    !    real*8, dimension(:,:), allocatable :: bnd_grd
     
     if(.not.initia_from_pgfile) then
         xxs5(1:2*(nthe-1)+5,:)=xxs(:,mpsa-4:mpsa)
@@ -20034,7 +20034,7 @@ subroutine find_bnd_grd
         theta(i)=dasin((zzs5(i,5)-zzero)/dsqrt((zzs5(i,5)-zzero)**2+(xxs5(i,5)-xzero)**2))
         if(xxs5(i,5).le.xzero) theta(i)=pi-theta(i)
         if((xxs5(i,5).gt.xzero).and.(zzs5(i,5).le.zzero)) theta(i)=2.d0*pi+theta(i)
-        !	print*, theta(i)*180/pi,xxs(i,5),zzs(i,5)
+        !    print*, theta(i)*180/pi,xxs(i,5),zzs(i,5)
     enddo
     
     theta_tmp=theta
@@ -20043,9 +20043,9 @@ subroutine find_bnd_grd
     call shell_sort(nxzs,theta_tmp,mpsa5,zzs5)
     theta=theta_tmp
     
-    ! 	do i=1,205
-    !	print*, theta_tmp(i)*180/pi,xxs(i,5),zzs(i,5)
-    !	enddo
+    !     do i=1,205
+    !    print*, theta_tmp(i)*180/pi,xxs(i,5),zzs(i,5)
+    !    enddo
     
     if(nrank.eq.0) then
         open(unit=163,file='xxs.dat',status='unknown',form='formatted')
@@ -20064,7 +20064,7 @@ subroutine find_bnd_grd
     zb(:)=zzs5(:,mpsa5)
     ngrdb=0
     do i=1,nxzs-1
-        !	print*,i,theta(i),theta(i+1)
+        !    print*,i,theta(i),theta(i+1)
         do while(theta(i).eq.theta(i+1))
             theta(i:nxzs-1)=theta(i+1:nxzs)
             xb(i:nxzs-1)=xb(i+1:nxzs)
@@ -20074,7 +20074,7 @@ subroutine find_bnd_grd
         enddo
     enddo
     ngrdb=nxzs-ngrdb
-    !	print*,xb,'haha',zb
+    !    print*,xb,'haha',zb
     
     if(nrank.eq.0) then
         open(unit=191,file='xb.dat',status='unknown',form='formatted')
@@ -20087,11 +20087,11 @@ subroutine find_bnd_grd
     endif
     
     ! the sortted bounary for theta from small to large, that is xb and zb
-    !	xb(:)=xxs(:,5)
-    !	zb(:)=zzs(:,5)
-    !	ngrdb=size(xb)
-    !	ngrdx=size(xxt)
-    !	ngrdz=size(zzt)
+    !    xb(:)=xxs(:,5)
+    !    zb(:)=zzs(:,5)
+    !    ngrdb=size(xb)
+    !    ngrdx=size(xxt)
+    !    ngrdz=size(zzt)
     
     
     nbndx=0
@@ -20103,16 +20103,16 @@ subroutine find_bnd_grd
         id4=i+2
         if(i.eq.1) then
             id1=ngrdb
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         if(i.eq.ngrdb-1) then
             id4=1
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         if(i.eq.ngrdb) then
             id3=1
             id4=2
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         ! find z boundary point, that is the intersection of xb-zb and z grid lines, zzt
         do j=1,mzt
@@ -20122,7 +20122,7 @@ subroutine find_bnd_grd
                 bnd_z(nbndz,2)=zzt(j)
                 bnd_z(nbndz,3:6)=(/id1,id2,id3,id4/)
                 bnd_z(nbndz,7)=j
-                !	exit
+                !    exit
             endif
         enddo
         
@@ -20135,7 +20135,7 @@ subroutine find_bnd_grd
                 bnd_x(nbndx,1)=xxt(j)
                 bnd_x(nbndx,3:6)=(/id1,id2,id3,id4/)
                 bnd_x(nbndx,7)=j
-                !	exit
+                !    exit
             endif
         enddo
         
@@ -20169,9 +20169,9 @@ subroutine find_bnd_grd
         close(194)
         511 format(3(1x,e12.5)) 
     endif
-    ! finally we got bnd_x z and grd_type	
+    ! finally we got bnd_x z and grd_type    
     
-    !	call decide_grd_type_in_each_proc
+    !    call decide_grd_type_in_each_proc
     
     
     return
@@ -20186,7 +20186,7 @@ subroutine find_bnd_grd_in_each_proc
     implicit none
     integer id1,id2,id3,id4,i,j,js
     include 'mpif.h'
-    !	real*8, dimension(:,:), allocatable :: bnd_grd
+    !    real*8, dimension(:,:), allocatable :: bnd_grd
     
     if(.not.initia_from_pgfile) then
         xxs5(1:2*(nthe-1)+5,:)=xxs(:,mpsa-4:mpsa)
@@ -20225,7 +20225,7 @@ subroutine find_bnd_grd_in_each_proc
         theta(i)=dasin((zzs5(i,5)-zzero)/dsqrt((zzs5(i,5)-zzero)**2+(xxs5(i,5)-xzero)**2))
         if(xxs5(i,5).le.xzero) theta(i)=pi-theta(i)
         if((xxs5(i,5).gt.xzero).and.(zzs5(i,5).le.zzero)) theta(i)=2.d0*pi+theta(i)
-        !	print*, theta(i)*180/pi,xxs(i,5),zzs(i,5)
+        !    print*, theta(i)*180/pi,xxs(i,5),zzs(i,5)
     enddo
     
     theta_tmp=theta
@@ -20234,9 +20234,9 @@ subroutine find_bnd_grd_in_each_proc
     call shell_sort(nxzs,theta_tmp,mpsa5,zzs5)
     theta=theta_tmp
     
-    ! 	do i=1,205
-    !	print*, theta_tmp(i)*180/pi,xxs(i,5),zzs(i,5)
-    !	enddo
+    !     do i=1,205
+    !    print*, theta_tmp(i)*180/pi,xxs(i,5),zzs(i,5)
+    !    enddo
     
     if(nrank.eq.0) then
         open(unit=163,file='xxs.dat',status='unknown',form='formatted')
@@ -20255,7 +20255,7 @@ subroutine find_bnd_grd_in_each_proc
     zb(:)=zzs5(:,mpsa5)
     ngrdb=0
     do i=1,nxzs-1
-        !	print*,i,theta(i),theta(i+1)
+        !    print*,i,theta(i),theta(i+1)
         do while(theta(i).eq.theta(i+1))
             theta(i:nxzs-1)=theta(i+1:nxzs)
             xb(i:nxzs-1)=xb(i+1:nxzs)
@@ -20265,7 +20265,7 @@ subroutine find_bnd_grd_in_each_proc
         enddo
     enddo
     ngrdb=nxzs-ngrdb
-    !	print*,xb,'haha',zb
+    !    print*,xb,'haha',zb
     
     if(nrank.eq.0) then
         open(unit=191,file='xb.dat',status='unknown',form='formatted')
@@ -20278,11 +20278,11 @@ subroutine find_bnd_grd_in_each_proc
     endif
     
     ! the sortted bounary for theta from small to large, that is xb and zb
-    !	xb(:)=xxs(:,5)
-    !	zb(:)=zzs(:,5)
-    !	ngrdb=size(xb)
-    !	ngrdx=size(xxt)
-    !	ngrdz=size(zzt)
+    !    xb(:)=xxs(:,5)
+    !    zb(:)=zzs(:,5)
+    !    ngrdb=size(xb)
+    !    ngrdx=size(xxt)
+    !    ngrdz=size(zzt)
     
     
     nbndx_ep=0
@@ -20294,16 +20294,16 @@ subroutine find_bnd_grd_in_each_proc
         id4=i+2
         if(i.eq.1) then
             id1=ngrdb
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         if(i.eq.ngrdb-1) then
             id4=1
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         if(i.eq.ngrdb) then
             id3=1
             id4=2
-            !		  print*,id1,id2,id3,id4
+            !          print*,id1,id2,id3,id4
         endif
         ! find z boundary point, that is the intersection of xb-zb and z grid lines, zzt
         do j=1,mz
@@ -20313,7 +20313,7 @@ subroutine find_bnd_grd_in_each_proc
                 bnd_z_ep(nbndz_ep,2)=zz(j)
                 bnd_z_ep(nbndz_ep,3:6)=(/id1,id2,id3,id4/)
                 bnd_z_ep(nbndz_ep,7)=j
-                !	exit
+                !    exit
             endif
         enddo
         
@@ -20326,7 +20326,7 @@ subroutine find_bnd_grd_in_each_proc
                 bnd_x_ep(nbndx_ep,1)=xx(j)
                 bnd_x_ep(nbndx_ep,3:6)=(/id1,id2,id3,id4/)
                 bnd_x_ep(nbndx_ep,7)=j
-                !	exit
+                !    exit
             endif
         enddo
         
@@ -20349,26 +20349,26 @@ subroutine find_bnd_grd_in_each_proc
         509 format(7(1x,e12.5)) 
     endif
     
-    !	call decide_grd_type_bndx	
-    !	call decide_grd_type_bndz	
-    !	if(nrank.eq.0) then
-    !	open(unit=193,file='grd_typebndx.dat',status='unknown',form='formatted')
-    !	open(unit=194,file='grd_typebndz.dat',status='unknown',form='formatted')
-    !	write(193,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,1)*1.d0),jx=1,mxt),jz=1,mzt)
-    !	write(194,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,2)*1.d0),jx=1,mxt),jz=1,mzt)
-    !	close(193)
-    !	close(194)
+    !    call decide_grd_type_bndx    
+    !    call decide_grd_type_bndz    
+    !    if(nrank.eq.0) then
+    !    open(unit=193,file='grd_typebndx.dat',status='unknown',form='formatted')
+    !    open(unit=194,file='grd_typebndz.dat',status='unknown',form='formatted')
+    !    write(193,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,1)*1.d0),jx=1,mxt),jz=1,mzt)
+    !    write(194,511)(((xxt(jx),zzt(jz),grd_type(jx,jz,2)*1.d0),jx=1,mxt),jz=1,mzt)
+    !    close(193)
+    !    close(194)
     !  511 format(3(1x,e12.5)) 
-    !	endif
-    !! finally we got bnd_x z and grd_type	
+    !    endif
+    !! finally we got bnd_x z and grd_type    
     
-    !	call decide_grd_type_in_each_proc
+    !    call decide_grd_type_in_each_proc
     
     
     return
 end
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
 ! find the bnd_x point for the IR point in mxt mzt in z direction
 subroutine find_ir_pnt_bndx
@@ -20388,7 +20388,7 @@ subroutine find_ir_pnt_bndx
                     ! its upper point is a IR point
                     do jr=1,nbndx
                         if((nint(bndx_grd(jr,7)).eq.jx).and.(dabs(zzt(jz)-bndx_grd(jr,2)).lt.deltaxz)) then
-                            !			    if(nint(bndx_grd(jr,7)).eq.jx) then
+                            !                if(nint(bndx_grd(jr,7)).eq.jx) then
                             gdtp_bndx(jx,jz,1)=-1
                             gdtp_bndx(jx,jz+1,1)=-2
                             ! jr is the boundary point
@@ -20402,7 +20402,7 @@ subroutine find_ir_pnt_bndx
                     ! its lower point is a IR point
                     do jr=1,nbndx
                         if((nint(bndx_grd(jr,7)).eq.jx).and.(dabs(bndx_grd(jr,2)-zzt(jz)).lt.deltaxz)) then
-                            !			    if(nint(bndx_grd(jr,7)).eq.jx) then
+                            !                if(nint(bndx_grd(jr,7)).eq.jx) then
                             gdtp_bndx(jx,jz,1)=1
                             gdtp_bndx(jx,jz-1,1)=2
                             ! jr is the boundary point
@@ -20419,7 +20419,7 @@ subroutine find_ir_pnt_bndx
 end
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
 ! find the bnd_z point for the IR point in mxt mzt in x direction
 subroutine find_ir_pnt_bndz
@@ -20444,7 +20444,7 @@ subroutine find_ir_pnt_bndz
                             ! jr is the boundary point
                             gdtp_bndz(jx,jz,2)=jr
                             gdtp_bndz(jx+1,jz,2)=jr
-                            !					exit
+                            !                    exit
                         endif
                     enddo
                 endif
@@ -20458,7 +20458,7 @@ subroutine find_ir_pnt_bndz
                             ! jr is the boundary point
                             gdtp_bndz(jx,jz,2)=jr
                             gdtp_bndz(jx-1,jz,2)=jr
-                            !					exit
+                            !                    exit
                         endif
                     enddo
                 endif
@@ -20469,9 +20469,9 @@ subroutine find_ir_pnt_bndz
 end
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
-! decide the type for bnd_x in z direction	
+! decide the type for bnd_x in z direction    
 subroutine decide_grd_type_bndx
     use declare
     implicit none
@@ -20481,7 +20481,7 @@ subroutine decide_grd_type_bndx
     dztt=(maxval(zzt)-minval(zzt))/(mzt-1.d0)
     ! set to dropped point at first
     grd_type(:,:,1)=4
-    ! decide the type for bnd_x in z direction	
+    ! decide the type for bnd_x in z direction    
     do 1 jx=1,mxt
     do 2 i=1,nbndx-1
     
@@ -20492,8 +20492,8 @@ subroutine decide_grd_type_bndx
         if((zzt(jz).eq.bnd_x(1,2)).or.(zzt(jz).eq.bnd_x(nbndx,2))) then
             ! boundary point, but is unique
             !! boundary point, too close to the boundary, set as dropped point directly
-            !	grd_type(jx,jz,1)=3
-            !	grd_type(jx,jz,1)=4
+            !    grd_type(jx,jz,1)=3
+            !    grd_type(jx,jz,1)=4
             grd_type(jx,jz,1)=5 !inside but dropped
         endif
         3 continue
@@ -20523,8 +20523,8 @@ subroutine decide_grd_type_bndx
             endif
             !! boundary point, too close to the boundary, set as dropped point directly
             if((zzt(jz).eq.bnd1).or.(zzt(jz).eq.bnd2)) then
-                !		  grd_type(jx,jz,1)=3
-                !		  grd_type(jx,jz,1)=4
+                !          grd_type(jx,jz,1)=3
+                !          grd_type(jx,jz,1)=4
                 grd_type(jx,jz,1)=5 !inside but dropped
             endif
             
@@ -20556,9 +20556,9 @@ end
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
-! decide the type for bnd_z in x direction	
+! decide the type for bnd_z in x direction    
 subroutine decide_grd_type_bndz
     use declare
     implicit none
@@ -20568,7 +20568,7 @@ subroutine decide_grd_type_bndz
     dxtt=(maxval(xxt)-minval(xxt))/(mxt-1.d0)
     ! set to dropped point at first
     grd_type(:,:,2)=4
-    ! decide the type for bnd_z in x direction	
+    ! decide the type for bnd_z in x direction    
     do 1 jz=1,mzt
     do 2 i=1,nbndz-1
     
@@ -20579,8 +20579,8 @@ subroutine decide_grd_type_bndz
         if((xxt(jx).eq.bnd_z(1,1)).or.(xxt(jx).eq.bnd_z(nbndz,1))) then
             ! boundary point, but is unique
             !! boundary point, too close to the boundary, set as dropped point directly
-            !	grd_type(jx,jz,2)=3
-            !	grd_type(jx,jz,2)=4
+            !    grd_type(jx,jz,2)=3
+            !    grd_type(jx,jz,2)=4
             grd_type(jx,jz,2)=5 !inside but dropped
         endif
         3 continue
@@ -20610,8 +20610,8 @@ subroutine decide_grd_type_bndz
             endif
             !! boundary point, too close to the boundary, set as dropped point directly
             if((xxt(jx).eq.bnd1).or.(xxt(jx).eq.bnd2)) then
-                !		  grd_type(jx,jz,2)=3
-                !		  grd_type(jx,jz,2)=4
+                !          grd_type(jx,jz,2)=3
+                !          grd_type(jx,jz,2)=4
                 grd_type(jx,jz,2)=5 !inside but dropped
             endif
             
@@ -20643,18 +20643,18 @@ end
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
 subroutine shell_sort(n,a,m,b)
     implicit none
     integer n, m
     real*8 a(n)
     real*8 b(n,m)
-    !	copy from Numerical recipes in FORTRAN 77, vol. 1 Page323
-    !	Sorts an array a(1:n) into ascending numerical order by Shell's method (diminishing in-
-    !	crement sort). n is input; a is replaced on output by its sorted rearrangement.
-    !	b is the additaion array that need to be sorted in the rank of a with m
-    !	elements in each row.
+    !    copy from Numerical recipes in FORTRAN 77, vol. 1 Page323
+    !    Sorts an array a(1:n) into ascending numerical order by Shell's method (diminishing in-
+    !    crement sort). n is input; a is replaced on output by its sorted rearrangement.
+    !    b is the additaion array that need to be sorted in the rank of a with m
+    !    elements in each row.
     integer i,j,inc
     real*8 v
     real*8, dimension(1,m):: v2
@@ -20682,7 +20682,7 @@ subroutine shell_sort(n,a,m,b)
 end
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
 subroutine piksrt(n,arr,m,b)
     implicit none
@@ -20709,7 +20709,7 @@ end
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 !hw**********************************************************************
 ! Lagrange's interpolation in 1 dimensional with 4 points
 subroutine lag_intp1d4p(x0,f0,x1,f1,x2,f2,x3,f3,x_lag,f_lag)
@@ -20726,7 +20726,7 @@ subroutine lag_intp1d4p(x0,f0,x1,f1,x2,f2,x3,f3,x_lag,f_lag)
     else
         f_lag=f1+(f2-f1)/(x2-x1)*(x_lag-x1)
         print*,'hahalag2p',x_lag,x1,x2,f1,f2,f_lag
-        !		  stop
+        !          stop
     endif
     return
 end
@@ -20748,7 +20748,7 @@ subroutine map_nova_to_bnd_grd
     real*8 rimax,ximin,zimin,dxi,dzi
     !      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
     !      real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
-    !	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+    !    real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
     !      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
     !      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
     !      integer icell(1,1)
@@ -21065,7 +21065,7 @@ subroutine map_nova_to_bnd_grd_in_each_proc
     real*8 rimax,ximin,zimin,dxi,dzi
     !      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
     !     real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
-    !	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+    !    real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
     !      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
     !      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
     !      integer icell(1,1)
@@ -21294,12 +21294,12 @@ subroutine map_nova_to_bnd_grd_in_each_proc
             
         enddo
         
-        !	if(nrank.eq.0) then
-        !	open(unit=1,file='bx_bndz.dat',status='unknown',form='formatted')
-        !	write(1,2) ((bndz_grd(jx,1),bndz_grd(jx,2),bx_bndz(jx)),jx=1,nbndz)
+        !    if(nrank.eq.0) then
+        !    open(unit=1,file='bx_bndz.dat',status='unknown',form='formatted')
+        !    write(1,2) ((bndz_grd(jx,1),bndz_grd(jx,2),bx_bndz(jx)),jx=1,nbndz)
         !    2 format(3(1x,e12.5))
-        !    	close(1)
-        !	endif
+        !        close(1)
+        !    endif
         
     
     else
@@ -21324,7 +21324,7 @@ subroutine map_int_to_bnd_grd
     real*8 rimax,ximin,zimin,dxi,dzi
     !      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
     !      real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
-    !	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+    !    real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
     !      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
     !      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
     !      integer icell(1,1)
@@ -21626,9 +21626,9 @@ end
 subroutine decide_grd_type_in_each_proc
     use declare
     implicit none
-    !	integer, dimension(mxt,mzt,2) :: grd_type 
+    !    integer, dimension(mxt,mzt,2) :: grd_type 
     !!1-4 means regualr, irregular, boundary, dropped for bndx in z direction or for bndz in x direction
-    !	integer, dimension(mx,mz,6) :: gdtp_ep ! the grid type for each point in every processor
+    !    integer, dimension(mx,mz,6) :: gdtp_ep ! the grid type for each point in every processor
     
     character*9 output
     character*3 cn
@@ -21691,8 +21691,8 @@ subroutine calculate_dnfm_coeff_for_ir_bndx_point
     !      real*8, dimension(mx,mz) :: az2_irx,bz2_irx,cz2_irx,dz2_irx
     !      real*8, dimension(mx,mz) :: ax2_irz,bx2_irz,cx2_irz,dx2_irz
     
-    !	real*8, allocatable :: axm_bndz(:), bxm_bndz(:), cxm_bndz(:), axp_bndz(:), bxp_bndz(:), cxp_bndz(:)
-    !	real*8, allocatable :: azm_bndx(:), bzm_bndx(:), czm_bndx(:), azp_bndx(:), bzp_bndx(:), czp_bndx(:)
+    !    real*8, allocatable :: axm_bndz(:), bxm_bndz(:), cxm_bndz(:), axp_bndz(:), bxp_bndz(:), cxp_bndz(:)
+    !    real*8, allocatable :: azm_bndx(:), bzm_bndx(:), czm_bndx(:), azp_bndx(:), bzp_bndx(:), czp_bndx(:)
     allocate(axm_bndz(nbndz))
     allocate(bxm_bndz(nbndz))
     allocate(cxm_bndz(nbndz))
@@ -22257,11 +22257,13 @@ subroutine gauss_solve(A,b,x,N)
     !  Coded by  :  syz 
     !  Date      :  2010-4-8
     !-----------------------------------------------------
-    !  Purpose   :  高斯消去�?    !                 Ax=b
+    !  Purpose   :  高斯消去法
+    !                 Ax=b
     !-----------------------------------------------------
     !  Input  parameters  :
     !       1.   A(N,N)系数矩阵
-    !       2.   b(N)右向�?    !       3.   N方程维数
+    !       2.   b(N)右向量
+    !       3.   N方程维数
     !  Output parameters  :
     !       1.  x  方程的根
     !       2.
@@ -22277,7 +22279,7 @@ subroutine gauss_solve(A,b,x,N)
     
     real*8::Aup(N,N),bup(N)
     
-    !Ab为增广矩�? [Ab]
+    !Ab为增广矩阵  [Ab]
     real*8::Ab(N,N+1)
     
     Ab(1:N,1:N)=A
@@ -22286,7 +22288,7 @@ subroutine gauss_solve(A,b,x,N)
     
     
     !-------------------------------
-    !  这段�?高斯消去法的核心部分
+    !  这段是 高斯消去法的核心部分
     do k=1,N-1
         
         do i=k+1,N
@@ -22300,7 +22302,8 @@ subroutine gauss_solve(A,b,x,N)
     end do
     
     !-----------------------------
-    ! 经过上一步，Ab已经化为如下形式的矩�?    !            | *  *  *  *  # |
+    ! 经过上一步，Ab已经化为如下形式的矩阵
+    !            | *  *  *  *  # |
     !     [A b]= | 0  *  *  *  # |
     !            | 0  0  *  *  # |
     !            | 0  0  0  *  # |
@@ -22323,11 +22326,13 @@ subroutine uptri(A,b,x,N)
     !  Coded by  :  syz 
     !  Date      :  2010-4-8
     !-----------------------------------------------------
-    !  Purpose   :  上三角方程组的回带方�?    !                 Ax=b
+    !  Purpose   :  上三角方程组的回带方法
+    !                 Ax=b
     !-----------------------------------------------------
     !  Input  parameters  :
     !       1.   A(N,N)系数矩阵
-    !       2.   b(N)右向�?    !       3.   N方程维数
+    !       2.   b(N)右向量
+    !       3.   N方程维数
     !  Output parameters  :
     !       1.  x  方程的根
     !       2.
@@ -22374,7 +22379,7 @@ subroutine right_cut_cell
     ! IR2 IR2: both two IR2 parts need to be calculated with the boundary point by d1fc, order 4th
     ! IR1 IR1: both tow IR1 parts need to be calculated with the boundary point by d1fbm, d1fbp, order 3th
     ! IR1 IR2: the IR1 part need to be calculated with the boundary point by d1fbm, d1fbp, order 3th
-    ! 	     the IR2 parts need to be calculated with the boundary point by d1fc, order 4th
+    !          the IR2 parts need to be calculated with the boundary point by d1fc, order 4th
     ! R or IR1 or IR2 with D: interpolation in the dropped direction
     ! D D: do not calculate
     
@@ -23154,7 +23159,7 @@ subroutine convt_cut_cell
     ! IR2 IR2: both two IR2 parts need to be calculated with the boundary point by d1fc, order 4th
     ! IR1 IR1: both tow IR1 parts need to be calculated with the boundary point by d1fbm, d1fbp, order 3th
     ! IR1 IR2: the IR1 part need to be calculated with the boundary point by d1fbm, d1fbp, order 3th
-    ! 	     the IR2 parts need to be calculated with the boundary point by d1fc, order 4th
+    !          the IR2 parts need to be calculated with the boundary point by d1fc, order 4th
     ! R or IR1 or IR2 with D: interpolation in the dropped direction
     ! D D: do not calculate
     
@@ -23318,26 +23323,27 @@ subroutine convt_cut_cell
     endif
     
     
-    !	if((gdtp_ep(jx,jz,1).eq.5).or.(gdtp_ep(jx,jz,4).eq.5)) then
-    !		  ! need to do for the dropped but inside point by interpolation,
-    !		  ! but no derivation for x1r xr2 x1z xz2, haha, need not to
-    !		  ! calculate the interpolation
-    !		  ! haowei 12/18
-    !		  if(gdtp_ep(jx-1,jz,1).eq.2) then ! in x direction, it is R R IR IR DI B DO, the DI need to be interpolated by jx-2, jx-1, jx, B
-    !		  endif
+    !    if((gdtp_ep(jx,jz,1).eq.5).or.(gdtp_ep(jx,jz,4).eq.5)) then
+    !          ! need to do for the dropped but inside point by interpolation,
+    !          ! but no derivation for x1r xr2 x1z xz2, haha, need not to
+    !          ! calculate the interpolation
+    !          ! haowei 12/18
+    !          if(gdtp_ep(jx-1,jz,1).eq.2) then ! in x direction, it is R R IR IR DI B DO, the DI need to be interpolated by jx-2, jx-1, jx, B
+    !          endif
     !
-    !		  if(gdtp_ep(jx+1,jz,1).eq.2) then ! in x direction, it is DO B DI IR IR R R, the DI need to be interpolated by B, jx, jx+1, jx+2
-    !		  endif
+    !          if(gdtp_ep(jx+1,jz,1).eq.2) then ! in x direction, it is DO B DI IR IR R R, the DI need to be interpolated by B, jx, jx+1, jx+2
+    !          endif
     !
-    !		  if(gdtp_ep(jx,jz-1,4).eq.2) then ! in z direction, it is R R IR IR DI B DO, the DI need to be interpolated by jz-2, jz-1, jz, B
-    !		  endif
+    !          if(gdtp_ep(jx,jz-1,4).eq.2) then ! in z direction, it is R R IR IR DI B DO, the DI need to be interpolated by jz-2, jz-1, jz, B
+    !          endif
     !
-    !		  if(gdtp_ep(jx,jz+1,4).eq.2) then ! in z direction, it is DO B DI IR IR R R, the DI need to be interpolated by B, jz, jz+1, jz+2
-    !		  endif
-    !	endif
+    !          if(gdtp_ep(jx,jz+1,4).eq.2) then ! in z direction, it is DO B DI IR IR R R, the DI need to be interpolated by B, jz, jz+1, jz+2
+    !          endif
+    !    endif
     
     xr(jx,jz,jy,m)=xint_dx(jx,jz,m)+x1r(jx,jz,jy,m)  
     xz(jx,jz,jy,m)=xint_dz(jx,jz,m)+x1z(jx,jz,jy,m)
+    
     
     21 continue
     30 continue
@@ -23591,15 +23597,15 @@ subroutine bndry8_cut_cell
     !     enddo
     !     endif
     
-    !	do 10 m=1,8
+    !    do 10 m=1,8
     !      do 10 jy=1,my
     !      do 10 jz=iz_first,iz_last
     !      do 10 jx=ix_first,ix_last
     !      if(psi(jx,jz).lt.psia1) then
-    !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
-    !	x1(jx,jz,jy,m)=x1(jx,jz,jy,m)*hypb_ratio(jx,jz)
-    !	endif
-    !	endif
+    !    if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
+    !    x1(jx,jz,jy,m)=x1(jx,jz,jy,m)*hypb_ratio(jx,jz)
+    !    endif
+    !    endif
     !   10 continue
     
     !      call mpi_transfersm(x1(:,:,:,:),8) 
@@ -23608,7 +23614,7 @@ subroutine bndry8_cut_cell
     !      if(smoothp1ll) call smthp1_traceline(3)  
     
     call smth_irpt_with_difc_v3(2,1,1,8,0.85d0)
-    !	call smth_irpt_with_difc_v2(2,1,1,8,0.85d0)
+    !    call smth_irpt_with_difc_v2(2,1,1,8,0.85d0)
     
     do 19 jy=1,my
     x(:,:,jy,:)=x1(:,:,jy,:)+xint(:,:,:)
@@ -23680,7 +23686,7 @@ subroutine bndry8_cut_cell_v2_fixed
                     !    call interp1d2l(x1(jx+2,jz,jy,m),x1(jx+1,jz,jy,m),0.d0, &
                     xx(jx+2),xx(jx+1),bndz_grd(itag,1),xx(jx),x1(jx,jz,jy,m))
                 enddo
-                !		
+                !        
                 do ibnd=1,size(jxjz_list3_bndry,dim=1)
                     jx=jxjz_list3_bndry(ibnd,1)
                     jz=jxjz_list3_bndry(ibnd,2)
@@ -23690,7 +23696,7 @@ subroutine bndry8_cut_cell_v2_fixed
                     !    call interp1d2l(x1(jx,jz-2,jy,m),x1(jx,jz-1,jy,m),0.d0, &
                     zz(jz-2),zz(jz-1),bndx_grd(itag,2),zz(jz),x1(jx,jz,jy,m))
                 enddo
-                !		
+                !        
                 do ibnd=1,size(jxjz_list4_bndry,dim=1)
                     jx=jxjz_list4_bndry(ibnd,1)
                     jz=jxjz_list4_bndry(ibnd,2)
@@ -23772,10 +23778,10 @@ subroutine bndry8_cut_cell_v2_fixed
     do 10 jz=iz_first,iz_last
     do 10 jx=ix_first,ix_last
     !      if(psi(jx,jz).lt.psia1) then
-    !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
+    !    if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
     x1(jx,jz,jy,m)=x1(jx,jz,jy,m)*hypb_ratio(jx,jz)
-    !	endif
-    !	endif
+    !    endif
+    !    endif
     10 continue
     
     !      call mpi_transfersm(x1(:,:,:,:),8) 
@@ -23783,9 +23789,9 @@ subroutine bndry8_cut_cell_v2_fixed
     
     !      if(smoothp1ll) call smthp1_traceline(3)  
     
-    !	call smth_irpt_with_difc(2,1,1,8,0.85d0)
-    !	call smth_irpt_with_difc_v2(2,1,1,8,0.85d0)
-    !	call smth_irpt_with_difc_v3(2,1,1,8,0.85d0) !open if necessary ! smooth all
+    !    call smth_irpt_with_difc(2,1,1,8,0.85d0)
+    !    call smth_irpt_with_difc_v2(2,1,1,8,0.85d0)
+    !    call smth_irpt_with_difc_v3(2,1,1,8,0.85d0) !open if necessary ! smooth all
     call smth_irpt_with_difc_v3(2,1,1,2,0.85d0) !open if necessary ! smooth the rho and p
     
     do 19 jy=1,my
@@ -24181,22 +24187,22 @@ subroutine efield_cut_cell
     
     4 continue
     
-    !	do 10 m=1,3
+    !    do 10 m=1,3
     !      do 10 jy=1,my
     !      do 10 jz=iz_first,iz_last
     !      do 10 jx=ix_first,ix_last
     !      if(psi(jx,jz).lt.psia1) then
-    !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
-    !	ef(jx,jz,jy,m)=ef(jx,jz,jy,m)*hypb_ratio(jx,jz)
-    !	endif
-    !	endif
+    !    if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
+    !    ef(jx,jz,jy,m)=ef(jx,jz,jy,m)*hypb_ratio(jx,jz)
+    !    endif
+    !    endif
     !   10 continue
     !       call mpi_transfersm(ef(:,:,:,:),3)
     !**********************************************************
     if(smoothef) call smthef_dis_v2(3)
     
-    !	call smth_irpt_with_difc(4,2,1,3,0.9d0)
-    !	call smth_irpt_with_difc_v2(4,2,1,3,0.9d0)
+    !    call smth_irpt_with_difc(4,2,1,3,0.9d0)
+    !    call smth_irpt_with_difc_v2(4,2,1,3,0.9d0)
     
     return
 end
@@ -24363,7 +24369,7 @@ subroutine efield_cut_cell_v2_fixed
                         xx(jx+2),xx(jx+1),bndz_grd(itag,1),xx(jx),ef(jx,jz,jy,m))
                         
                     enddo
-                    !		
+                    !        
                     do ibnd=1,size(jxjz_list3_bndry,dim=1)
                         jx=jxjz_list3_bndry(ibnd,1)
                         jz=jxjz_list3_bndry(ibnd,2)
@@ -24373,7 +24379,7 @@ subroutine efield_cut_cell_v2_fixed
                         zz(jz-2),zz(jz-1),bndx_grd(itag,2),zz(jz),ef(jx,jz,jy,m))
                         
                     enddo
-                    !		
+                    !        
                     do ibnd=1,size(jxjz_list4_bndry,dim=1)
                         jx=jxjz_list4_bndry(ibnd,1)
                         jz=jxjz_list4_bndry(ibnd,2)
@@ -24451,17 +24457,17 @@ subroutine efield_cut_cell_v2_fixed
     do 10 jz=iz_first,iz_last
     do 10 jx=ix_first,ix_last
     !      if(psi(jx,jz).lt.psia1) then
-    !	if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
+    !    if((hypb_ratio(jx,jz).ge.0.d0).and.(hypb_ratio(jx,jz).le.1.d0)) then
     ef(jx,jz,jy,m)=ef(jx,jz,jy,m)*hypb_ratio(jx,jz)
-    !	endif
-    !	endif
+    !    endif
+    !    endif
     10 continue
     !       call mpi_transfersm(ef(:,:,:,:),3)
     !**********************************************************
     if(smoothef) call smthef_dis_v2(3)
     
-    !	call smth_irpt_with_difc(4,2,1,3,0.9d0)
-    !	call smth_irpt_with_difc_v2(4,2,1,3,0.9d0)
+    !    call smth_irpt_with_difc(4,2,1,3,0.9d0)
+    !    call smth_irpt_with_difc_v2(4,2,1,3,0.9d0)
     
     return
 end
@@ -24493,8 +24499,8 @@ subroutine decide_hyperbolic_ratio
             !      if(psi(jx,jz).lt.psia1) then
             if(gdtp_ep(jx,jz,1).ne.4) then
                 if(rr(jx,jz).ge.0.d0) then
-                    !	hypb_ratio(jx,jz)=max(0.d0,dtanh((1.d0-rr(jx,jz))*20.d0))
-                    !	hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr(jx,jz))*30.d0))
+                    !    hypb_ratio(jx,jz)=max(0.d0,dtanh((1.d0-rr(jx,jz))*20.d0))
+                    !    hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr(jx,jz))*30.d0))
                     ! test only for circle case, need to expand to East case, etc.
                     rr_tmp=dsqrt((xx(jx)-xzero)**2+(zz(jz)-zzero)**2) 
                 hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr_tmp)*30.d0))
@@ -24505,7 +24511,7 @@ subroutine decide_hyperbolic_ratio
         enddo
     enddo
     
-    !	hypb_ratio(:,:)=1.d0
+    !    hypb_ratio(:,:)=1.d0
     if(nrank.eq.0) then
         open(unit=1,file='rrt.dat',status='unknown',form='formatted')
         write(1,2)(((xxt(jx),zzt(jz),rrt(jx,jz)),jx=1,mxt),jz=1,mzt)
@@ -24553,11 +24559,11 @@ subroutine decide_hyperbolic_ratio_v2
             !      if(psi(jx,jz).lt.psia1) then
             if(gdtp_ep(jx,jz,1).ne.4) then
                 if(rr(jx,jz).ge.0.d0) then
-                    !	hypb_ratio(jx,jz)=max(0.d0,dtanh((1.d0-rr(jx,jz))*20.d0))
-                    !	hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr(jx,jz))*30.d0))
+                    !    hypb_ratio(jx,jz)=max(0.d0,dtanh((1.d0-rr(jx,jz))*20.d0))
+                    !    hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr(jx,jz))*30.d0))
                     ! test only for circle case, need to expand to East case, etc.
                     !    rr_tmp=dsqrt((xx(jx)-xzero)**2+(zz(jz)-zzero)**2) 
-                    !	hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr_tmp)*30.d0))
+                    !    hypb_ratio(jx,jz)=max(0.d0,dtanh((hypb_value-rr_tmp)*30.d0))
                     hypb_ratio(jx,jz)=max(0.d0,dtanh((dist_to_bnd(jx,jz)-hypb_value)*30.d0))
                 
                 else
@@ -24567,7 +24573,7 @@ subroutine decide_hyperbolic_ratio_v2
         enddo
     enddo
     
-    !	hypb_ratio(:,:)=1.d0
+    !    hypb_ratio(:,:)=1.d0
     if(nrank.eq.0) then
         open(unit=1,file='rrt.dat',status='unknown',form='formatted')
         write(1,2)(((xxt(jx),zzt(jz),rrt(jx,jz)),jx=1,mxt),jz=1,mzt)
@@ -24605,13 +24611,13 @@ subroutine smth_irpt_with_difc(kk,f_type,ms,me,avrgh0)
         if((gdtp_ep(jx,jz,1).lt.4).and.(gdtp_ep(jx,jz,4).lt.4)) then
             ! 1st calculate the difc for x direction regular point and the inside ir point, 
             ! that is gdtp_ep(jx,jz,4)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-            !	if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+            !    if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
             if(f_type.eq.1) then ! for x1
             wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
             else if(f_type.eq.2) then ! for ef
                 wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
             endif
-            !	endif
+            !    endif
             
             ! then calculate the difc for outside ir point and inside dropped point
             if((gdtp_ep(jx,jz,5).eq.1).or.((gdtp_ep(jx,jz,4).eq.5).and.(gdtp_ep(jx-1,jz,5).eq.1))) then
@@ -24637,13 +24643,13 @@ subroutine smth_irpt_with_difc(kk,f_type,ms,me,avrgh0)
             
             ! 2nd calculate the difc for z direction regular point and the inside ir point,
             ! that is gdtp_ep(jx,jz,1)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-            !	if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+            !    if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
             if(f_type.eq.1) then ! for x1
             wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
             else if(f_type.eq.2) then ! for ef
                 wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
             endif
-            !	endif
+            !    endif
             
             ! then calculate the difc for ouside ir point and inside dropped point
             if((gdtp_ep(jx,jz,2).eq.1).or.((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz-1,2).eq.1))) then
@@ -24666,8 +24672,8 @@ subroutine smth_irpt_with_difc(kk,f_type,ms,me,avrgh0)
                 
             endif
             
-            !	tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
-            !	tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+            !    tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+            !    tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
             
             difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))    
             if(f_type.eq.1) then ! for x1
@@ -24682,10 +24688,10 @@ subroutine smth_irpt_with_difc(kk,f_type,ms,me,avrgh0)
         
         if(f_type.eq.1) then ! for x1
             !      call mpi_transfersm(x1(:,:,:,:),8) 
-        call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+        call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
         else if(f_type.eq.2) then ! for ef
-            !	call mpi_transfersm(ef(:,:,:,:),3)
-            call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+            !    call mpi_transfersm(ef(:,:,:,:),3)
+            call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
         endif
         
     enddo
@@ -24730,7 +24736,7 @@ subroutine smth_irpt_with_difc_v2(kk,f_type,ms,me,avrgh0)
             difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))    
             x1(jx,jz,jy,m)=x1(jx,jz,jy,m)+difc_tmp*(wdifcx(jx,jz)+wdifcz(jx,jz))
             1 continue
-            call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+            call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
         enddo
     
     else if(f_type.eq.2) then ! for ef
@@ -24755,7 +24761,7 @@ subroutine smth_irpt_with_difc_v2(kk,f_type,ms,me,avrgh0)
             difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))    
             ef(jx,jz,jy,m)=ef(jx,jz,jy,m)+difc_tmp*(wdifcx(jx,jz)+wdifcz(jx,jz))
             2 continue
-            call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+            call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
         enddo
     endif
     
@@ -24770,7 +24776,7 @@ subroutine smth_irpt_with_difc_v3(kk,f_type,ms,me,avrgh0)
     integer itag,k,kk,f_type,ms,me
     real*8 tmp1,tmp2,difc_tmp
     real*8 avrgh0
-    !	real*8, dimension(my,8) :: wdix,wdiz
+    !    real*8, dimension(my,8) :: wdix,wdiz
     include 'mpif.h'
     !
     ! second-order diffusion
@@ -24785,43 +24791,43 @@ subroutine smth_irpt_with_difc_v3(kk,f_type,ms,me,avrgh0)
         if((gdtp_ep(jx,jz,1).lt.4).and.(gdtp_ep(jx,jz,4).lt.4)) then
             ! 1st calculate the difc for x direction regular point and the inside ir point, 
             ! that is gdtp_ep(jx,jz,4)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-            !	if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+            !    if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
             if(f_type.eq.1) then ! for x1
-                wdix(:,1:8)=2.*((x1(jx+1,jz,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-xx(jx-1)) &
-                -(x1(jx,jz,:,1:8)-x1(jx-1,jz,:,1:8))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
-            !	wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
+                wdix(:,ms:me)=2.*((x1(jx+1,jz,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+                -(x1(jx,jz,:,ms:me)-x1(jx-1,jz,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
+            !    wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
             else if(f_type.eq.2) then ! for ef
-                wdix(:,1:3)=2.*((ef(jx+1,jz,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-xx(jx-1)) &
-                -(ef(jx,jz,:,1:3)-ef(jx-1,jz,:,1:3))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
-                !	wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
+                wdix(:,ms:me)=2.*((ef(jx+1,jz,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+                -(ef(jx,jz,:,ms:me)-ef(jx-1,jz,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-xx(jx-1))
+                !    wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),xx(jx-1),xx(jx),xx(jx+1))
             endif
-            !	endif
+            !    endif
             
             ! then calculate the difc for outside ir point and inside dropped point
             if((gdtp_ep(jx,jz,5).eq.1).or.((gdtp_ep(jx,jz,4).eq.5).and.(gdtp_ep(jx-1,jz,5).eq.1))) then
                 itag=gdtp_ep(jx,jz,6)
                 
                 if(f_type.eq.1) then ! for x1
-                    wdix(:,1:8)=2.*((x1_8bndz(itag,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-xx(jx-1)) &
-                    -(x1(jx,jz,:,1:8)-x1(jx-1,jz,:,1:8))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
-                !	wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1_8bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
+                    wdix(:,ms:me)=2.*((x1_8bndz(itag,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+                    -(x1(jx,jz,:,ms:me)-x1(jx-1,jz,:,ms:me))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
+                !    wdifcx(jx,jz)=difc(x1(jx-1,jz,jy,m),x1(jx,jz,jy,m),x1_8bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
                 else if(f_type.eq.2) then ! for ef
-                    wdix(:,1:3)=2.*((ef_3bndz(itag,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-xx(jx-1)) &
-                    -(ef(jx,jz,:,1:3)-ef(jx-1,jz,:,1:3))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
-                    !	wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef_3bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
+                    wdix(:,ms:me)=2.*((ef_3bndz(itag,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-xx(jx-1)) &
+                    -(ef(jx,jz,:,ms:me)-ef(jx-1,jz,:,ms:me))*(bndz_grd(itag,1)-xx(jx)))/(bndz_grd(itag,1)-xx(jx-1))
+                    !    wdifcx(jx,jz)=difc(ef(jx-1,jz,jy,m),ef(jx,jz,jy,m),ef_3bndz(itag,jy,m),xx(jx-1),xx(jx),bndz_grd(itag,1))
                 endif
             
             else if((gdtp_ep(jx,jz,5).eq.-1).or.((gdtp_ep(jx,jz,4).eq.5).and.(gdtp_ep(jx+1,jz,5).eq.-1))) then
                 itag=gdtp_ep(jx,jz,6)
                 
                 if(f_type.eq.1) then ! for x1
-                    wdix(:,1:8)=2.*((x1(jx+1,jz,:,1:8)-x1(jx,jz,:,1:8))*(xx(jx)-bndz_grd(itag,1)) &
-                    -(x1(jx,jz,:,1:8)-x1_8bndz(itag,:,1:8))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
-                !	wdifcx(jx,jz)=difc(x1_8bndz(itag,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
+                    wdix(:,ms:me)=2.*((x1(jx+1,jz,:,ms:me)-x1(jx,jz,:,ms:me))*(xx(jx)-bndz_grd(itag,1)) &
+                    -(x1(jx,jz,:,ms:me)-x1_8bndz(itag,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
+                !    wdifcx(jx,jz)=difc(x1_8bndz(itag,jy,m),x1(jx,jz,jy,m),x1(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
                 else if(f_type.eq.2) then ! for ef
-                    wdix(:,1:3)=2.*((ef(jx+1,jz,:,1:3)-ef(jx,jz,:,1:3))*(xx(jx)-bndz_grd(itag,1)) &
-                    -(ef(jx,jz,:,1:3)-ef_3bndz(itag,:,1:3))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
-                    !	wdifcx(jx,jz)=difc(ef_3bndz(itag,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
+                    wdix(:,ms:me)=2.*((ef(jx+1,jz,:,ms:me)-ef(jx,jz,:,ms:me))*(xx(jx)-bndz_grd(itag,1)) &
+                    -(ef(jx,jz,:,ms:me)-ef_3bndz(itag,:,ms:me))*(xx(jx+1)-xx(jx)))/(xx(jx+1)-bndz_grd(itag,1))
+                    !    wdifcx(jx,jz)=difc(ef_3bndz(itag,jy,m),ef(jx,jz,jy,m),ef(jx+1,jz,jy,m),bndz_grd(itag,1),xx(jx),xx(jx+1))
                 endif
                 
             endif
@@ -24829,55 +24835,55 @@ subroutine smth_irpt_with_difc_v3(kk,f_type,ms,me,avrgh0)
             
             ! 2nd calculate the difc for z direction regular point and the inside ir point,
             ! that is gdtp_ep(jx,jz,1)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-            !	if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+            !    if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
             if(f_type.eq.1) then ! for x1
-                wdiz(:,1:8)=2.*((x1(jx,jz+1,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-zz(jz-1)) &
-                -(x1(jx,jz,:,1:8)-x1(jx,jz-1,:,1:8))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
-            !	wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
+                wdiz(:,ms:me)=2.*((x1(jx,jz+1,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+                -(x1(jx,jz,:,ms:me)-x1(jx,jz-1,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
+            !    wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
             else if(f_type.eq.2) then ! for ef
-                wdiz(:,1:3)=2.*((ef(jx,jz+1,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-zz(jz-1)) &
-                -(ef(jx,jz,:,1:3)-ef(jx,jz-1,:,1:3))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
-                !	wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
+                wdiz(:,ms:me)=2.*((ef(jx,jz+1,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+                -(ef(jx,jz,:,ms:me)-ef(jx,jz-1,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-zz(jz-1))
+                !    wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),zz(jz-1),zz(jz),zz(jz+1))
             endif
-            !	endif
+            !    endif
             
             ! then calculate the difc for ouside ir point and inside dropped point
             if((gdtp_ep(jx,jz,2).eq.1).or.((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz-1,2).eq.1))) then
                 itag=gdtp_ep(jx,jz,3)
                 
                 if(f_type.eq.1) then ! for x1
-                    wdiz(:,1:8)=2.*((x1_8bndx(itag,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-zz(jz-1)) &
-                    -(x1(jx,jz,:,1:8)-x1(jx,jz-1,:,1:8))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
-                !	wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1_8bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
+                    wdiz(:,ms:me)=2.*((x1_8bndx(itag,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+                    -(x1(jx,jz,:,ms:me)-x1(jx,jz-1,:,ms:me))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
+                !    wdifcz(jx,jz)=difc(x1(jx,jz-1,jy,m),x1(jx,jz,jy,m),x1_8bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
                 else if(f_type.eq.2) then ! for ef
-                    wdiz(:,1:3)=2.*((ef_3bndx(itag,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-zz(jz-1)) &
-                    -(ef(jx,jz,:,1:3)-ef(jx,jz-1,:,1:3))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
-                    !	wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef_3bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
+                    wdiz(:,ms:me)=2.*((ef_3bndx(itag,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-zz(jz-1)) &
+                    -(ef(jx,jz,:,ms:me)-ef(jx,jz-1,:,ms:me))*(bndx_grd(itag,2)-zz(jz)))/(bndx_grd(itag,2)-zz(jz-1))
+                    !    wdifcz(jx,jz)=difc(ef(jx,jz-1,jy,m),ef(jx,jz,jy,m),ef_3bndx(itag,jy,m),zz(jz-1),zz(jz),bndx_grd(itag,2))
                 endif
             
             else if((gdtp_ep(jx,jz,2).eq.-1).or.((gdtp_ep(jx,jz,1).eq.5).and.(gdtp_ep(jx,jz+1,2).eq.-1))) then
                 itag=gdtp_ep(jx,jz,3)
                 
                 if(f_type.eq.1) then ! for x1
-                    wdiz(:,1:8)=2.*((x1(jx,jz+1,:,1:8)-x1(jx,jz,:,1:8))*(zz(jz)-bndx_grd(itag,2)) &
-                    -(x1(jx,jz,:,1:8)-x1_8bndx(itag,:,1:8))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
-                !	wdifcz(jx,jz)=difc(x1_8bndx(itag,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
+                    wdiz(:,ms:me)=2.*((x1(jx,jz+1,:,ms:me)-x1(jx,jz,:,ms:me))*(zz(jz)-bndx_grd(itag,2)) &
+                    -(x1(jx,jz,:,ms:me)-x1_8bndx(itag,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
+                !    wdifcz(jx,jz)=difc(x1_8bndx(itag,jy,m),x1(jx,jz,jy,m),x1(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
                 else if(f_type.eq.2) then ! for ef
-                    wdiz(:,1:3)=2.*((ef(jx,jz+1,:,1:3)-ef(jx,jz,:,1:3))*(zz(jz)-bndx_grd(itag,2)) &
-                    -(ef(jx,jz,:,1:3)-ef_3bndx(itag,:,1:3))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
-                    !	wdifcz(jx,jz)=difc(ef_3bndx(itag,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
+                    wdiz(:,ms:me)=2.*((ef(jx,jz+1,:,ms:me)-ef(jx,jz,:,ms:me))*(zz(jz)-bndx_grd(itag,2)) &
+                    -(ef(jx,jz,:,ms:me)-ef_3bndx(itag,:,ms:me))*(zz(jz+1)-zz(jz)))/(zz(jz+1)-bndx_grd(itag,2))
+                    !    wdifcz(jx,jz)=difc(ef_3bndx(itag,jy,m),ef(jx,jz,jy,m),ef(jx,jz+1,jy,m),bndx_grd(itag,2),zz(jz),zz(jz+1))
                 endif
                 
             endif
             
-            !	tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
-            !	tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+            !    tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+            !    tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
             
             difc_tmp=(1.d0-avrgh0)*0.25*(1-hypb_ratio(jx,jz))    
             if(f_type.eq.1) then ! for x1
-            x1(jx,jz,:,1:8)=x1(jx,jz,:,1:8)+difc_tmp*(wdix(:,1:8)+wdiz(:,1:8))
+            x1(jx,jz,:,ms:me)=x1(jx,jz,:,ms:me)+difc_tmp*(wdix(:,ms:me)+wdiz(:,ms:me))
             else if(f_type.eq.2) then ! for ef
-                ef(jx,jz,:,1:3)=ef(jx,jz,:,1:3)+difc_tmp*(wdix(:,1:3)+wdiz(:,1:3))
+                ef(jx,jz,:,ms:me)=ef(jx,jz,:,ms:me)+difc_tmp*(wdix(:,ms:me)+wdiz(:,ms:me))
             endif
             
         endif
@@ -24885,10 +24891,10 @@ subroutine smth_irpt_with_difc_v3(kk,f_type,ms,me,avrgh0)
         
         if(f_type.eq.1) then ! for x1
             !      call mpi_transfersm(x1(:,:,:,:),8) 
-        call mpi_transfersm_one_layer(x1(:,:,:,:),8)
+        call mpi_transfersm_one_layer(x1(:,:,:,ms:me),me-ms+1)
         else if(f_type.eq.2) then ! for ef
-            !	call mpi_transfersm(ef(:,:,:,:),3)
-            call mpi_transfersm_one_layer(ef(:,:,:,:),3)
+            !    call mpi_transfersm(ef(:,:,:,:),3)
+            call mpi_transfersm_one_layer(ef(:,:,:,ms:me),me-ms+1)
         endif
         
     enddo
@@ -24915,16 +24921,16 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         !      wsx1(:,:,:)=ws(ix_last-2,:,:,:)
         wsx2(:,:,:)=ws(ix_last-3,:,:,:)
         !mpi   ----------------------------------------------------------------
-        !	call mpi_send( wsx1, myz*mm, mpi_double_precision, nrank + 1, 0,  &
-        !		      mpi_comm_world,ierror )
+        !    call mpi_send( wsx1, myz*mm, mpi_double_precision, nrank + 1, 0,  &
+        !              mpi_comm_world,ierror )
         call mpi_send( wsx2, myz*mm, mpi_double_precision, nrank + 1, 0,  &
         mpi_comm_world,ierror )
         !mpi   ----------------------------------------------------------------
     endif
     if (nrankxz.gt.nrkz(nrank)*nprx .and. nrankxz.le.nrkz(nrank)*nprx+nprx-1) then
         !mpi   ----------------------------------------------------------------
-        !	call mpi_recv( wsx1, myz*mm, mpi_double_precision, nrank - 1, 0,  &
-        !		      mpi_comm_world, status,ierror )
+        !    call mpi_recv( wsx1, myz*mm, mpi_double_precision, nrank - 1, 0,  &
+        !              mpi_comm_world, status,ierror )
         call mpi_recv( wsx2, myz*mm, mpi_double_precision, nrank - 1, 0,  &
         mpi_comm_world, status,ierror )
         !mpi   ----------------------------------------------------------------
@@ -24940,8 +24946,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         !      wsx1(:,:,:)=ws(ix_first+2,:,:,:)
         wsx2(:,:,:)=ws(ix_first+3,:,:,:)
         !mpi   ----------------------------------------------------------------
-        !	call mpi_send( wsx1, myz*mm, mpi_double_precision, nrank - 1, 1,  &
-        !		      mpi_comm_world,ierror )
+        !    call mpi_send( wsx1, myz*mm, mpi_double_precision, nrank - 1, 1,  &
+        !              mpi_comm_world,ierror )
         call mpi_send( wsx2, myz*mm, mpi_double_precision, nrank - 1, 1,  &
         mpi_comm_world,ierror )
         !mpi   ----------------------------------------------------------------
@@ -24949,8 +24955,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
     
     if (nrankxz.ge.nrkz(nrank)*nprx .and. nrankxz.lt.nrkz(nrank)*nprx+nprx-1) then
         !mpi   ----------------------------------------------------------------
-        !	call mpi_recv( wsx1, myz*mm, mpi_double_precision, nrank + 1, 1,  &
-        !		      mpi_comm_world, status,ierror )
+        !    call mpi_recv( wsx1, myz*mm, mpi_double_precision, nrank + 1, 1,  &
+        !              mpi_comm_world, status,ierror )
         call mpi_recv( wsx2, myz*mm, mpi_double_precision, nrank + 1, 1,  &
         mpi_comm_world, status,ierror )
         !mpi   ----------------------------------------------------------------
@@ -24965,16 +24971,16 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         !      wsz1(:,:,:)=ws(:,iz_last-2,:,:)
         wsz2(:,:,:)=ws(:,iz_last-3,:,:)
         !mpi   ----------------------------------------------------------------
-        !	call mpi_send( wsz1, myx*mm, mpi_double_precision, nrank + nprx, 0,  &
-        !		      mpi_comm_world,ierror )
+        !    call mpi_send( wsz1, myx*mm, mpi_double_precision, nrank + nprx, 0,  &
+        !              mpi_comm_world,ierror )
         call mpi_send( wsz2, myx*mm, mpi_double_precision, nrank + nprx, 0,  &
         mpi_comm_world,ierror )
         !mpi   ----------------------------------------------------------------
     endif
     if (nrankxz.ge.nprx ) then
         !mpi   ----------------------------------------------------------------
-        !	call mpi_recv( wsz1, myx*mm, mpi_double_precision, nrank - nprx, 0,  &
-        !		      mpi_comm_world, status,ierror )
+        !    call mpi_recv( wsz1, myx*mm, mpi_double_precision, nrank - nprx, 0,  &
+        !              mpi_comm_world, status,ierror )
         call mpi_recv( wsz2, myx*mm, mpi_double_precision, nrank - nprx, 0,  &
         mpi_comm_world, status,ierror )
         !mpi   ----------------------------------------------------------------
@@ -24989,8 +24995,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         !      wsz1(:,:,:)=ws(:,iz_first+2,:,:)
         wsz2(:,:,:)=ws(:,iz_first+3,:,:)
         !mpi   ----------------------------------------------------------------
-        !	call mpi_send( wsz1, myx*mm, mpi_double_precision, nrank - nprx, 1,  &
-        !		      mpi_comm_world,ierror )
+        !    call mpi_send( wsz1, myx*mm, mpi_double_precision, nrank - nprx, 1,  &
+        !              mpi_comm_world,ierror )
         call mpi_send( wsz2, myx*mm, mpi_double_precision, nrank - nprx, 1,  &
         mpi_comm_world,ierror )
         !mpi   ----------------------------------------------------------------
@@ -24998,8 +25004,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
     
     if (nrankxz.lt.nsizexz-nprx) then
         !mpi   ----------------------------------------------------------------
-        !	call mpi_recv( wsz1, myx*mm, mpi_double_precision, nrank + nprx, 1,  &
-        !		      mpi_comm_world, status,ierror )
+        !    call mpi_recv( wsz1, myx*mm, mpi_double_precision, nrank + nprx, 1,  &
+        !              mpi_comm_world, status,ierror )
         call mpi_recv( wsz2, myx*mm, mpi_double_precision, nrank + nprx, 1,  &
         mpi_comm_world, status,ierror )
         !mpi   ----------------------------------------------------------------
@@ -25015,16 +25021,16 @@ subroutine mpi_transfersm_one_layer(ws,mm)
             !      wsy1(:,:,:)=ws(:,:,iy_last-2,:)
             wsy2(:,:,:)=ws(:,:,iy_last-3,:)
             !mpi   ----------------------------------------------------------------
-            !	call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank + nprxz, 0,  &
-            !		      mpi_comm_world,ierror )
+            !    call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank + nprxz, 0,  &
+            !              mpi_comm_world,ierror )
             call mpi_send( wsy2, mxz*mm, mpi_double_precision, nrank + nprxz, 0,  &
             mpi_comm_world,ierror )
             !mpi   ----------------------------------------------------------------
         endif
         if (nrky(nrank) .ge. 1 )  then
             !mpi   ----------------------------------------------------------------
-            !	call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank - nprxz, 0,  &
-            !		      mpi_comm_world, status,ierror )
+            !    call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank - nprxz, 0,  &
+            !              mpi_comm_world, status,ierror )
             call mpi_recv( wsy2, mxz*mm, mpi_double_precision, nrank - nprxz, 0,  &
             mpi_comm_world, status,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25037,16 +25043,16 @@ subroutine mpi_transfersm_one_layer(ws,mm)
             !      wsy1(:,:,:)=ws(:,:,iy_last-2,:)
             wsy2(:,:,:)=ws(:,:,iy_last-3,:)
             !mpi   ----------------------------------------------------------------
-            !	call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 0,  &
-            !		      mpi_comm_world,ierror )
+            !    call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 0,  &
+            !              mpi_comm_world,ierror )
             call mpi_send( wsy2, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 0,  &
             mpi_comm_world,ierror )
             !mpi   ----------------------------------------------------------------
         endif
         if (nrky(nrank) .eq. 0 )  then
             !mpi   ----------------------------------------------------------------
-            !	call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 0,  &
-            !		      mpi_comm_world, status,ierror )
+            !    call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 0,  &
+            !              mpi_comm_world, status,ierror )
             call mpi_recv( wsy2, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 0,  &
             mpi_comm_world, status,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25061,8 +25067,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
             !      wsy1(:,:,:)=ws(:,:,iy_first+2,:)
             wsy2(:,:,:)=ws(:,:,iy_first+3,:)
             !mpi   ----------------------------------------------------------------
-            !	call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank - nprxz, 1,  &
-            !		      mpi_comm_world,ierror )
+            !    call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank - nprxz, 1,  &
+            !              mpi_comm_world,ierror )
             call mpi_send( wsy2, mxz*mm, mpi_double_precision, nrank - nprxz, 1,  &
             mpi_comm_world,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25070,8 +25076,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         
         if (nrky(nrank).lt. npry-1) then
             !mpi   ----------------------------------------------------------------
-            !	call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank + nprxz, 1,  &
-            !		      mpi_comm_world, status,ierror )
+            !    call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank + nprxz, 1,  &
+            !              mpi_comm_world, status,ierror )
             call mpi_recv( wsy2, mxz*mm, mpi_double_precision, nrank + nprxz, 1,  &
             mpi_comm_world, status,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25083,8 +25089,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
             !      wsy1(:,:,:)=ws(:,:,iy_first+2,:)
             wsy2(:,:,:)=ws(:,:,iy_first+3,:)
             !mpi   ----------------------------------------------------------------
-            !	call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 1,  &
-            !		      mpi_comm_world,ierror )
+            !    call mpi_send( wsy1, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 1,  &
+            !              mpi_comm_world,ierror )
             call mpi_send( wsy2, mxz*mm, mpi_double_precision, nrank +(npry-1)*nprxz, 1,  &
             mpi_comm_world,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25092,8 +25098,8 @@ subroutine mpi_transfersm_one_layer(ws,mm)
         
         if (nrky(nrank).eq. npry-1) then
             !mpi   ----------------------------------------------------------------
-            !	call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 1,  &
-            !		      mpi_comm_world, status,ierror )
+            !    call mpi_recv( wsy1, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 1,  &
+            !              mpi_comm_world, status,ierror )
             call mpi_recv( wsy2, mxz*mm, mpi_double_precision, nrank -(npry-1)*nprxz, 1,  &
             mpi_comm_world, status,ierror )
             !mpi   ----------------------------------------------------------------
@@ -25251,7 +25257,7 @@ subroutine data_type_weight
     if((gdtp_ep(jx,jz,1).lt.4).and.(gdtp_ep(jx,jz,4).lt.4)) then
         ! 1st calculate the difc for x direction regular point and the inside ir point, 
         ! that is gdtp_ep(jx,jz,4)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-        !	if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+        !    if((gdtp_ep(jx,jz,4).eq.1).or.(gdtp_ep(jx,jz,5).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
         type_weight(jx,jz,1)=1.d0
         
         
@@ -25268,7 +25274,7 @@ subroutine data_type_weight
         
         ! 2nd calculate the difc for z direction regular point and the inside ir point,
         ! that is gdtp_ep(jx,jz,1)=1, or gdtp_ep(jx,jz,4)=2 and gdtp_ep(jx,jz,5)=-+2
-        !	if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
+        !    if((gdtp_ep(jx,jz,1).eq.1).or.(gdtp_ep(jx,jz,2).eq.2).or.(gdtp_ep(jx,jz,5).eq.-2)) then
         type_weight(jx,jz,4)=1.d0
         
         ! then calculate the difc for ouside ir point and inside dropped point
@@ -25281,8 +25287,8 @@ subroutine data_type_weight
             
         endif
         
-        !	tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
-        !	tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+        !    tmp1=(xx(jx)-xzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
+        !    tmp2=(zz(jz)-zzero)**2/((xx(jx)-xzero)**2+(zz(jz)-zzero)**2)
         
     endif
     2 continue
@@ -25326,7 +25332,7 @@ subroutine read_pgfile
     read(1,3) PSIMAG, PSIBRY, RRMIN, RRMAX, ZZMIN, ZZMAX, RMAXIS, ZMAXIS
     3 format(8(1x,e17.9))         
     read(1,*)
-    !    4 format(1h1,1x,'PSI_1D, Q_1D, NE_1D, NI_1D, PRES_1D, PE_1D, PI_1D, TE_1D, TI_1D'	
+    !    4 format(1h1,1x,'PSI_1D, Q_1D, NE_1D, NI_1D, PRES_1D, PE_1D, PI_1D, TE_1D, TI_1D'    
     do i=1,npsi_pgfile
         read(1,5) PSI_1D(i), Q_1D(i), NE_1D(i), NI_1D(i), PRES_1D(i), PE_1D(i), PI_1D(i), TE_1D(i), TI_1D(i)
     enddo
@@ -25350,7 +25356,7 @@ subroutine read_pgfile
     close(8)
     
     
-    ! read eq_pgfile_rzlim.dat, limter grids	
+    ! read eq_pgfile_rzlim.dat, limter grids    
     open(10,file='eq_pgfile_rzlim.dat')
     do i=1,nlim
         read(10,11) RLIM(i), ZLIM(i)
@@ -25399,7 +25405,7 @@ subroutine read_pgfile
     ! after read the files, transform the necessary data into clt form
     aa=1 ! normalized minor radius
     aa2=aa*aa ! normalized minor radius
-    !	xzero=(maxval(RBS)+minval(RBS))/2.d0
+    !    xzero=(maxval(RBS)+minval(RBS))/2.d0
     xmax=RRMAX
     xmin=RRMIN
     zmax=ZZMAX
@@ -25416,7 +25422,7 @@ subroutine read_pgfile
     qmin=minval(Q_1D)
     qmax=maxval(Q_1D)
     q0=Q_1D(1)
-    !	pssmw=5.*(psia-psmin)/10.d0
+    !    pssmw=5.*(psia-psmin)/10.d0
     
     
     
@@ -25573,10 +25579,10 @@ subroutine rmp_east_pert
     include 'mpif.h'
     
     u0=4.d0*pi*1.d-7
-    !	b0_norm=2.2745d0 ! T
+    !    b0_norm=2.2745d0 ! T
     b0_norm=2.246028872496384d0 ! T
     a0_norm=1.d0 ! m
-    !	i0=100 ! A
+    !    i0=100 ! A
     i0=i0_rmp ! A
     n_up=8
     n_low=8
@@ -25593,7 +25599,7 @@ subroutine rmp_east_pert
     rd1=2.092
     zd1=-0.759
     
-    !	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+    !    lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
     
     
     bx_rmp(:,:,:)=0
@@ -25602,16 +25608,16 @@ subroutine rmp_east_pert
     
     rmp_set(:,1)=(/1., 1., 1., 1., -1., -1., -1., -1./)
     rmp_set(:,2)=(/1., 1., 1., 1., -1., -1., -1., -1./)
-    !	rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
-    !	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
-    !	rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
-    !	rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
-    !	rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
-    !	rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
-    !	rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
-    !	rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
-    !	rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
-    !	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
+    !    rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
+    !    rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
+    !    rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
+    !    rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
+    !    rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
+    !    rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
+    !    rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
+    !    rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
+    !    rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
+    !    rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
     
     ! for the grid point ***************************
     do 11 k=1,2
@@ -25744,7 +25750,7 @@ subroutine rmp_east_pert
     b_rmp(jx,jz,jy,3)=bz_rmp(jx,jz,jy)
     
     b_rmp(jx,jz,jy,:)=b_rmp(jx,jz,jy,:)/b0_norm
-    !	b_rmp(jx,jz,jy,:)=b_rmp(jx,jz,jy,:)*(1.+tanh((psi(jx,jz)-psia)*50.))/2.
+    !    b_rmp(jx,jz,jy,:)=b_rmp(jx,jz,jy,:)*(1.+tanh((psi(jx,jz)-psia)*50.))/2.
     
     12 continue
     
@@ -25778,31 +25784,31 @@ subroutine rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
     
     allocate(b_rmp_bndx(nbndx,my,3))
     
-    !	u0=4.d0*pi*1.d-7
-    !	b0_norm=2.2745d0 ! T
-    !	a0_norm=0.8 ! m
-    !	i0=4000 ! A
-    !	n_up=8
-    !	n_low=8
-    !	nphi=100
-    !	nab=20
+    !    u0=4.d0*pi*1.d-7
+    !    b0_norm=2.2745d0 ! T
+    !    a0_norm=0.8 ! m
+    !    i0=4000 ! A
+    !    n_up=8
+    !    n_low=8
+    !    nphi=100
+    !    nab=20
     
-    !	ra1=2.095
-    !	za1=0.765
-    !	rb1=2.28
-    !	zb1=0.586
-    !	rc1=2.28
-    !	zc1=-0.586
-    !	rd1=2.095
-    !	zd1=-0.765
+    !    ra1=2.095
+    !    za1=0.765
+    !    rb1=2.28
+    !    zb1=0.586
+    !    rc1=2.28
+    !    zc1=-0.586
+    !    rd1=2.095
+    !    zd1=-0.765
     
-    !	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+    !    lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
     
     
     b_rmp_bndx(:,:,:)=0.
     
-    !	rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
-    !	rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+    !    rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+    !    rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
     
     ! for the grid point ***************************
     do 11 k=1,2
@@ -25936,9 +25942,9 @@ subroutine rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
     12 continue
     
     x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)
-    !	do jy=1,my
-    !	x1_8bndx(:,jy,:)=x_8bndx(:,jy,:)-xint_8bndx(:,:)
-    !	enddo
+    !    do jy=1,my
+    !    x1_8bndx(:,jy,:)=x_8bndx(:,jy,:)-xint_8bndx(:,:)
+    !    enddo
     
     return
 end
@@ -25958,30 +25964,30 @@ subroutine rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
     
     allocate(b_rmp_bndz(nbndz,my,3))
     
-    !	u0=4.d0*pi*1.d-7
-    !	b0_norm=2.2745d0 ! T
-    !	a0_norm=0.8 ! m
-    !	i0=4000 ! A
-    !	n_up=8
-    !	n_low=8
-    !	nphi=100
-    !	nab=20
+    !    u0=4.d0*pi*1.d-7
+    !    b0_norm=2.2745d0 ! T
+    !    a0_norm=0.8 ! m
+    !    i0=4000 ! A
+    !    n_up=8
+    !    n_low=8
+    !    nphi=100
+    !    nab=20
     
-    !	ra1=2.095
-    !	za1=0.765
-    !	rb1=2.28
-    !	zb1=0.586
-    !	rc1=2.28
-    !	zc1=-0.586
-    !	rd1=2.095
-    !	zd1=-0.765
+    !    ra1=2.095
+    !    za1=0.765
+    !    rb1=2.28
+    !    zb1=0.586
+    !    rc1=2.28
+    !    zc1=-0.586
+    !    rd1=2.095
+    !    zd1=-0.765
     
-    !	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+    !    lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
     
     b_rmp_bndz(:,:,:)=0.
     
-    !	rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
-    !	rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+    !    rmp_set(:,1)=(/1, -1, 1, -1, 1, -1, 1, -1/)
+    !    rmp_set(:,2)=(/1, -1, 1, -1, 1, -1, 1, -1/)
     
     ! for the grid point ***************************
     do 11 k=1,2
@@ -26115,9 +26121,9 @@ subroutine rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
     12 continue
     
     x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)
-    !	do jy=1,my
-    !	x1_8bndz(:,jy,:)=x_8bndz(:,jy,:)-xint_8bndz(:,:)
-    !	enddo
+    !    do jy=1,my
+    !    x1_8bndz(:,jy,:)=x_8bndz(:,jy,:)-xint_8bndz(:,:)
+    !    enddo
     
     return
 end
@@ -26138,10 +26144,10 @@ subroutine rmp_east_pert_withA
     include 'mpif.h'
     
     u0=4.d0*pi*1.d-7
-    !	b0_norm=2.2745d0 ! T
+    !    b0_norm=2.2745d0 ! T
     b0_norm=2.246028872496384d0 ! T
     a0_norm=1.d0 ! m
-    !	i0=100 ! A
+    !    i0=100 ! A
     i0=i0_rmp
     n_up=8
     n_low=8
@@ -26158,7 +26164,7 @@ subroutine rmp_east_pert_withA
     rd1=2.092
     zd1=-0.759
     
-    !	lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
+    !    lab=sqrt((raa-rbb)**2+(zaa-zbb)**2)
     
     
     Ax_rmp(:,:,:)=0.
@@ -26167,16 +26173,16 @@ subroutine rmp_east_pert_withA
     
     rmp_set(:,1)=(/1., 1., 1., 1., -1., -1., -1., -1./)
     rmp_set(:,2)=(/1., 1., 1., 1., -1., -1., -1., -1./)
-    !	rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
-    !	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
-    !	rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
-    !	rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
-    !	rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
-    !	rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
-    !	rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
-    !	rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
-    !	rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
-    !	rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
+    !    rmp_set(:,1)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/)
+    !    rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=0
+    !    rmp_set(:,2)=(/-4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3/) ! phi=45
+    !    rmp_set(:,2)=(/-11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6, -11.3/) ! phi=90
+    !    rmp_set(:,2)=(/-11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6, -4.6/) ! phi=135
+    !    rmp_set(:,2)=(/-4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3, 4.6/) ! phi=180
+    !    rmp_set(:,2)=(/4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3, 11.3/) ! phi=225
+    !    rmp_set(:,2)=(/11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6, 11.3/) ! phi=270
+    !    rmp_set(:,2)=(/11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6, 4.6/) ! phi=315
+    !    rmp_set(:,2)=(/4.6, 11.3, 11.3, 4.6, -4.6, -11.3, -11.3, -4.6/) ! phi=360
     
     
     ! for the grid point ***************************
@@ -26309,13 +26315,13 @@ subroutine rmp_east_pert_withA
     At_rmp(jx,jz,jy,3)=Az_rmp(jx,jz,jy)
     
     
-    !	At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)*(1.+tanh((pst(jx,jz)-1.07)*50.))/2.
+    !    At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)*(1.+tanh((pst(jx,jz)-1.07)*50.))/2.
     At_rmp(jx,jz,jy,:)=At_rmp(jx,jz,jy,:)/a0_norm/b0_norm
     ! this method cannot be used below, for At_rmp is for total Box and hypb_raito
     ! is for sub-box.
-    !	hypb_value=2.984926524705880E-002
-    !	At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-hypb_ratio(jx,jz))
-    !	At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-max(0.d0,dtanh((dist_to_bnd(jx,jz)-4.d-2)*30.d0)))
+    !    hypb_value=2.984926524705880E-002
+    !    At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-hypb_ratio(jx,jz))
+    !    At_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,;)*(1.-max(0.d0,dtanh((dist_to_bnd(jx,jz)-4.d-2)*30.d0)))
     
     12 continue
     
@@ -26327,9 +26333,9 @@ subroutine rmp_east_pert_withA
                 Bt_rmp(jx,jz,jy,1)=dAy_rmp(jx,jz,jy,3)/xxt(jx)-dAz_rmp(jx,jz,jy,2)
                 Bt_rmp(jx,jz,jy,2)=dAz_rmp(jx,jz,jy,1)-dAx_rmp(jx,jz,jy,3)
                 Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,2)/xxt(jx)+dAx_rmp(jx,jz,jy,2)-dAy_rmp(jx,jz,jy,1)/xxt(jx)
-                !	Bt_rmp(jx,jz,jy,1)=At_rmp(jx,jz,jy,1)
-                !	Bt_rmp(jx,jz,jy,2)=At_rmp(jx,jz,jy,2)
-                !	Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,3)
+                !    Bt_rmp(jx,jz,jy,1)=At_rmp(jx,jz,jy,1)
+                !    Bt_rmp(jx,jz,jy,2)=At_rmp(jx,jz,jy,2)
+                !    Bt_rmp(jx,jz,jy,3)=At_rmp(jx,jz,jy,3)
                 
             enddo
         enddo
@@ -26381,30 +26387,30 @@ subroutine rmp_east_pert_withA
     call recrd_rmp_vacuum_2 ! nst=0 is used to recrd the vacuum rmp field
     
     ! keep only b_rmp_out part
-    !	b_rmp=b_rmp_out
+    !    b_rmp=b_rmp_out
     b_rmp_in(:,:,:,:)=b_rmp(:,:,:,:)-b_rmp_out(:,:,:,:)
     
-    !    	x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp(:,:,:,:)
+    !        x(:,:,:,6:8)=x(:,:,:,6:8)+b_rmp(:,:,:,:)
     !      do jy=iy_first,iy_last
     !      x1(:,:,jy,:)=x(:,:,jy,:)-xint(:,:,:)
     !      enddo
     
     
     call map_Bt_rmp_to_bnd_grd
-    !	call rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
-    !	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
-    !	call rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
-    !	ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+    !    call rmp_east_pert_bndx(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+    !    ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
+    !    call rmp_east_pert_bndz(u0, b0_norm, a0_norm, i0, n_up, n_low, nphi, nab,&
+    !    ra1, za1, rb1, zb1, rc1, zc1, rd1, zd1, rmp_set)
     
-    !	if(nrank.eq.0) then
-    !	open(unit=1,file='bx_rmp_bndz.dat',status='unknown',form='formatted')
-    !	open(unit=2,file='bx_rmp_bndx.dat',status='unknown',form='formatted')
-    !	write(1,33) ((bndz_grd(jx,1),bndz_grd(jx,2),b_rmp_bndz(jx,1,1)),jx=1,nbndz)
-    !	write(2,33) ((bndx_grd(jx,1),bndx_grd(jx,2),b_rmp_bndx(jx,1,1)),jx=1,nbndx)
+    !    if(nrank.eq.0) then
+    !    open(unit=1,file='bx_rmp_bndz.dat',status='unknown',form='formatted')
+    !    open(unit=2,file='bx_rmp_bndx.dat',status='unknown',form='formatted')
+    !    write(1,33) ((bndz_grd(jx,1),bndz_grd(jx,2),b_rmp_bndz(jx,1,1)),jx=1,nbndz)
+    !    write(2,33) ((bndx_grd(jx,1),bndx_grd(jx,2),b_rmp_bndx(jx,1,1)),jx=1,nbndx)
     !   33 format(3(1x,e12.5))
-    !    	close(1)
-    !    	close(2)
-    !	endif
+    !        close(1)
+    !        close(2)
+    !    endif
     
     return
 end
@@ -26412,7 +26418,7 @@ end
 !hw***************************************************************************************
 subroutine convt_At_rmp
     use declare
-    !	implicit none
+    !    implicit none
     real*8, dimension(mxt,mzt,3) :: wsy1,wsy2
     integer, parameter :: mxzt=mxt*mzt
     include 'mpif.h'
@@ -26609,7 +26615,7 @@ subroutine map_Bt_rmp_to_bnd_grd
     real*8 rimax,ximin,zimin,dxi,dzi
     !      real*8, dimension(mxt,mzt) :: bx_dx,bx_dz,bz_dx,bz_dz,by_dx,by_dz,uy_dx,uy_dz,tht_dx,tht_dz
     !      real*8, dimension(mxt,mzt) :: pt_dx,pt_dz,rh_dx,rh_dz
-    !	real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
+    !    real*8, dimension(nbndx) :: bx_bndx_dx, bx_bndx_dz
     !      real*8, dimension(mxt,mzt) :: bx,bxdx,bxdz,bz,bzdx,bzdz
     !      real*8, dimension(mxt,mzt) :: bxdx_dx,bxdx_dz,bxdz_dx,bxdz_dz,bzdx_dx,bzdx_dz,bzdz_dx,bzdz_dz
     !      integer icell(1,1)
@@ -26670,8 +26676,8 @@ subroutine map_Bt_rmp_to_bnd_grd
         1 continue
     endif
     
-    !   	x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)
-    !   	x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)
+    !       x_8bndx(:,:,6:8)=x_8bndx(:,:,6:8)+b_rmp_bndx(:,:,1:3)
+    !       x_8bndz(:,:,6:8)=x_8bndz(:,:,6:8)+b_rmp_bndz(:,:,1:3)
     
     
     if(nrank.eq.0) then
